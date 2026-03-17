@@ -1,0 +1,23 @@
+groups:
+- name: network
+  rules:
+
+  - alert: NetworkHighTraffic
+    expr: rate(node_network_receive_bytes_total[2m]) > 100000000
+    for: 2m
+    labels:
+      severity: warning
+      category: network
+    annotations:
+      summary: "High network traffic"
+      description: "High inbound traffic detected."
+
+  - alert: NetworkErrors
+    expr: rate(node_network_receive_errs_total[2m]) > 10
+    for: 2m
+    labels:
+      severity: warning
+      category: network
+    annotations:
+      summary: "Network errors detected"
+      description: "Network interface reporting errors."

@@ -1,0 +1,18 @@
+- name: Restore | [{{ svc.key }}] | unarchive artifact
+  unarchive:
+    src: "{{ restore_decrypted_path }}"
+    dest: "{{ restore_extract_dir }}"
+    remote_src: true
+
+- name: Restore | [{{ svc.key }}] | Create unarchive marker
+  file:
+    path: "{{ restore_unarchive_marker }}"
+    state: touch
+
+- name: Restore | [{{ svc.key }}] | Update unarchive marker state
+  set_fact:
+    restore_markers: "{{ restore_markers | combine({'unarchive': true}) }}"
+
+- name: Restore | [{{ svc.key }}] | unarchive result
+  debug:
+    msg: "[restore-unarchive] service={{ svc.key }} extracted={{ restore_extract_dir }}"

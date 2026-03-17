@@ -1,0 +1,54 @@
+- name: '| [{{ svc.key }}] | Start timer'
+  set_fact:
+    execution_timer_start: "{{ lookup('pipe', 'date +%s') | int }}"
+
+- name: Restore | [{{ svc.key }}] | Variables initialization
+  include_tasks: restore/vars_initialization.yml
+
+- name: Restore | [{{ svc.key }}] | Intent
+  debug:
+    msg: >-
+      [rclone-restore] service={{ svc.key }}
+      remote={{ restore_artifact_remote_path }}
+      encrypted={{ restore_encrypted_path }}
+      decrypted={{ restore_decrypted_path }}
+      extract_dir={{ restore_extract_dir }}
+
+- name: Restore | [{{ svc.key }}] | Run pre-restore hooks
+  include_tasks: shared_stages/hooks/pre.yml
+  when: svc.value.hooks is defined
+
+- name: Restore | [{{ svc.key }}] | Force restore
+  include_tasks: restore/pipeline/force_restore.yml
+  when: svc.value.force_restore | default(false)
+
+- name: Restore | [{{ svc.key }}] | Check restore_done marker
+  stat:
+    path: "{{ restore_done_marker }}"
+  register: restore_done_stat
+
+- name: Restore | [{{ svc.key }}] | Already restored
+  debug:
+    msg: "[rclone-restore] service={{ svc.key }} already restored"
+  when:
+    - restore_done_stat.stat.exists
+    - not svc.value.force_restore | default(false)
+
+- name: Restore | [{{ svc.key }}] | Execute pipeline
+  include_tasks: restore/pipeline/run.yml   
+  when:
+    - svc.value.source is defined
+    - svc.value.force_restore | default(false)
+      or not restore_done_stat.stat.exists
+
+- name: Restore | [{{ svc.key }}] | Run post-restore hooks
+  include_tasks: shared_stages/hooks/post.yml
+  when:
+    - svc.value.hooks is defined
+    - svc.value.force_restore | default(false)
+      or not restore_done_stat.stat.exists
+
+- name: Restore | [{{ svc.key }}] | Calculate execution time
+  include_tasks: shared_stages/execution_timer_calculation.yml
+  vars:
+    operation_name: "{{ svc.key }}"

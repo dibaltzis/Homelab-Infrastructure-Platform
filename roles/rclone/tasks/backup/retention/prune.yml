@@ -1,0 +1,24 @@
+- name: Retention | Prune execution
+  block:
+
+    - name: Retention | [{{ svc.key }}] | Build delete list
+      set_fact:
+        retention_delete_names: "{{ retention_delete_backups | map(attribute='Name') | list }}"
+
+    - name: Retention | [{{ svc.key }}] | Prune summary
+      debug:
+        msg: "[retention-prune] service={{ svc.key }} deleting={{ retention_delete_names | length }} backups"
+
+    - name: Retention | [{{ svc.key }}] | Delete old backups (batched)
+      command: >
+        docker run --rm
+        --entrypoint /bin/sh
+        -v {{ rclone_config_dir }}:{{ rclone_container_config_dir }}:ro
+        {{ rclone_container_image }}
+        -c '
+        for f in {{ retention_delete_names | join(" ") }}; do
+          rclone deletefile {{ svc.value.destination.remote }}:{{ svc.value.destination.bucket }}/{{ svc.value.destination.path | trim("/") }}/$f --config {{ rclone_container_config_file }};
+        done
+        '
+
+  when: retention_delete_backups | length > 0

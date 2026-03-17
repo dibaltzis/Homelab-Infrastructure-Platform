@@ -1,0 +1,75 @@
+# Ensure rclone config directory exists
+- name: Ensure rclone config directory exists
+  file:
+    path: "{{ rclone_config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+
+# Render rclone config
+- name: Render rclone config
+  template:
+    src: rclone.conf.j2
+    dest: "{{ rclone_config_file }}"
+    owner: root
+    group: root
+    mode: '0600'
+  no_log: true
+
+- name: Determine if any rclone action requires Picocrypt
+  set_fact:
+    rclone_picocrypt_needed: >-
+      {{
+        (
+          (rclone_restores.services | default({}))
+          | combine(rclone_backups.services | default({}))
+          | dict2items
+          | selectattr('value.crypto', 'defined')
+          | selectattr('value.crypto.enabled', 'equalto', true)
+          | selectattr('value.crypto.tool', 'defined')
+          | selectattr('value.crypto.tool', 'equalto', 'picocrypt')
+          | list
+        ) | length > 0
+      }}
+
+- name: Check if Picocrypt binary exists
+  stat:
+    path: /usr/local/bin/picocrypt
+  register: picocrypt_check
+  when: rclone_picocrypt_needed | bool
+
+- name: Install picocrypt (if needed)
+  include_tasks: install_encryption_tools/picocrypt.yml
+  when:
+    - rclone_picocrypt_needed | bool
+    - not picocrypt_check.stat.exists
+
+- name: Determine if GPG is needed for rclone workflows
+  set_fact:
+    rclone_gpg_needed: >-
+      {{
+        (
+          (rclone_restores.services | default({}))
+          | combine(rclone_backups.services | default({}))
+          | dict2items
+          | selectattr('value.crypto', 'defined')
+          | selectattr('value.crypto.enabled', 'equalto', true)
+          | selectattr('value.crypto.tool', 'defined')
+          | selectattr('value.crypto.tool', 'equalto', 'gpg')
+          | list
+        ) | length > 0
+      }}
+
+- name: Check if GPG is installed
+  command: which gpg
+  register: gpg_check
+  changed_when: false
+  failed_when: false
+  when: rclone_gpg_needed | bool
+
+- name: Install GPG (if needed)
+  include_tasks: install_encryption_tools/gpg.yml
+  when:
+    - rclone_gpg_needed | bool
+    - (gpg_check.rc | default(1)) != 0

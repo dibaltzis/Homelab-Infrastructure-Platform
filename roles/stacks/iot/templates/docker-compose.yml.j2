@@ -1,0 +1,42 @@
+networks:
+  shared-ingress-network:
+    external: true
+
+  shared-database-network:
+    external: true
+
+services:
+  home-assistant:
+    container_name: home-assistant
+    image: "{{ container_images.iot.home_assistant.repo }}:{{ container_images.iot.home_assistant.tag }}"
+    privileged: true
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    volumes:
+      - ${HOME_ASSISTANT_CONFIG_PATH}:/config
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      - TZ=${TIME_ZONE}
+    networks:
+      - shared-ingress-network
+      - shared-database-network
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+
+  hyperion:
+    container_name: hyperion
+    image: "{{ container_images.iot.hyperion.repo }}:{{ container_images.iot.hyperion.tag }}"
+    restart: unless-stopped
+    volumes:
+      - ${HYPERION_CONFIG_PATH}:/root/.hyperion
+    environment:
+      - TZ=${TIME_ZONE}
+    networks:
+      - shared-ingress-network
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+    ports:
+      - 19444:19444
+      - 19445:19445

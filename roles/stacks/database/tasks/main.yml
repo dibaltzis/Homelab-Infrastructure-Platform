@@ -1,0 +1,14 @@
+- name: Configure database stack
+  include_tasks: "{{ role_path }}/../tasks/stack_setup.yml"
+  vars:
+    stack_name: "database"
+
+    stack_env_template: "database.env.j2"
+    stack_compose_template: "docker-compose.yml.j2"
+
+    stack_data_dirs:
+      - path: "{{ POSTGRESQL_DATA_PATH }}"
+        owner: "999"
+        group: "999"
+        mode: "0700"
+

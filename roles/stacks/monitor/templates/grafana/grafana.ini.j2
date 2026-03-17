@@ -1,0 +1,41 @@
+#######################################
+# Grafana main configuration
+#######################################
+
+[server]
+domain = {{ GRAFANA_HOST }}
+root_url = {{ GRAFANA_PUBLIC_URL }}
+serve_from_sub_path = false
+
+[security]
+admin_user = {{ GRAFANA_ADMIN_USER }}
+admin_password = {{ GRAFANA_ADMIN_PASSWORD }}
+cookie_secure = true
+cookie_samesite = strict
+
+[users]
+allow_sign_up = false
+auto_assign_org = true
+auto_assign_org_role = Viewer
+
+[auth.anonymous]
+enabled = false
+
+[log]
+mode = console
+level = info
+
+[database]
+type = postgres
+host = {{ GRAFANA_POSTGRES_DB.HOST }}:{{ GRAFANA_POSTGRES_DB.PORT }}
+name = {{ GRAFANA_POSTGRES_DB.NAME }}
+user = {{ GRAFANA_POSTGRES_DB.USER }}
+password = "{{ GRAFANA_POSTGRES_DB.PASSWORD | trim }}"
+ssl_mode = disable
+max_idle_conn = 5
+max_open_conn = 20
+conn_max_lifetime = 14400
+
+[paths]
+data = /var/lib/grafana
+provisioning = /etc/grafana/provisioning

@@ -1,0 +1,42 @@
+groups:
+- name: containers
+  rules:
+
+  - alert: ContainerRestartLoop
+    expr: changes(container_start_time_seconds{name!="",image!=""}[2m]) >= 2
+    labels:
+      severity: critical
+      category: containers
+    annotations:
+      summary: "Container [{{ $labels.name }}] has a restart loop"
+      description: "Container {{ $labels.name }} restarted multiple times in the last 2 minutes."
+
+  - alert: ContainerDown
+    expr: time() - container_last_seen{name!="",image!=""} > 60
+    for: 1m
+    labels:
+      severity: critical
+      category: containers
+    annotations:
+      summary: "Container [{{ $labels.name }}] has stopped"
+      description: "Container {{ $labels.name }} has not reported metrics for over 60 seconds."
+
+  - alert: ContainerHighCPU
+    expr: rate(container_cpu_usage_seconds_total{name!="",image!=""}[2m]) > 0.8
+    for: 2m
+    labels:
+      severity: warning
+      category: containers
+    annotations:
+      summary: "Container [{{ $labels.name }}] has high CPU"
+      description: "Container {{ $labels.name }} CPU usage above 80%."
+
+  - alert: ContainerHighMemory
+    expr: container_memory_usage_bytes{name!="",image!=""} > 1073741824
+    for: 5m
+    labels:
+      severity: warning
+      category: containers
+    annotations:
+      summary: "Container [{{ $labels.name }}] has high memory usage"
+      description: "Container {{ $labels.name }} using more than 1GB RAM."

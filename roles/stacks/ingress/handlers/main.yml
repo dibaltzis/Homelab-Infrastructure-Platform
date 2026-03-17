@@ -1,0 +1,29 @@
+- name: wait for reverse-proxy container
+  command: docker inspect reverse-proxy
+  register: proxy_ready
+  retries: 10
+  delay: 2
+  until: proxy_ready.rc == 0
+  changed_when: false
+  listen: reload nginx
+
+- name: send HUP to nginx
+  command: docker kill -s HUP reverse-proxy
+  listen: reload nginx
+
+- name: wait for authelia container
+  command: docker inspect authelia
+  register: authelia_ready
+  retries: 10
+  delay: 2
+  until: authelia_ready.rc == 0
+  changed_when: false
+  listen: restart authelia
+
+- name: restart authelia container
+  command: docker restart authelia
+  listen: restart authelia
+
+- name: reload systemd
+  systemd:
+    daemon_reload: true

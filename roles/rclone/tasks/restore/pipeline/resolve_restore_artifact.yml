@@ -1,0 +1,81 @@
+- name: Restore | [{{ svc.key }}] | Determine restore selection mode
+  set_fact:
+    restore_selection_mode: "{{ svc.value.source.file | default('latest') }}"
+
+- name: Restore | [{{ svc.key }}] | Determine artifact prefix
+  set_fact:
+    artifact_prefix: "{{ svc.value.source.artifact_prefix | default(svc.key) }}"
+  when: restore_selection_mode in ['latest', 'oldest']
+
+# Explicit filename
+- name: Restore | [{{ svc.key }}] | Use explicit artifact filename
+  set_fact:
+    artifact_filename: "{{ restore_selection_mode }}"
+  when:
+    - restore_selection_mode not in ['latest', 'oldest']
+
+- name: Restore | [{{ svc.key }}] | Verify explicit artifact exists on remote
+  command: >
+    docker run --rm
+    -v {{ rclone_config_dir }}:{{ rclone_container_config_dir }}:ro
+    {{ rclone_container_image }}
+    lsjson
+    {{ restore_source_remote_base ~ svc.value.source.path_dir ~ '/' ~ artifact_filename }}
+    --config {{ rclone_container_config_file }}
+  register: explicit_lsjson
+  changed_when: false
+  when:
+    - restore_selection_mode not in ['latest', 'oldest']
+
+- name: Restore | [{{ svc.key }}] | Fail if explicit artifact missing
+  fail:
+    msg: "Restore artifact not found: {{ restore_source_remote_base ~ svc.value.source.path_dir ~ '/' ~ artifact_filename }}"
+  when:
+    - restore_selection_mode not in ['latest', 'oldest']
+    - (explicit_lsjson.stdout | from_json | length) == 0
+
+# latest / oldest
+- name: Restore | [{{ svc.key }}] | List remote backups
+  command: >
+    docker run --rm
+    -v {{ rclone_config_dir }}:{{ rclone_container_config_dir }}:ro
+    {{ rclone_container_image }}
+    lsjson
+    {{ restore_source_remote_base ~ svc.value.source.path_dir }}
+    --config {{ rclone_container_config_file }}
+  register: restore_lsjson
+  changed_when: false
+  when: restore_selection_mode in ['latest', 'oldest']
+
+- name: Restore | [{{ svc.key }}] | Build sorted backup list
+  set_fact:
+    restore_sorted_backups: >-
+      {{
+        (restore_lsjson.stdout | from_json)
+        | selectattr('Name', 'match', '^' ~ artifact_prefix ~ '_')
+        | sort(attribute='Name', reverse=True)
+        | list
+      }}
+  when: restore_selection_mode in ['latest', 'oldest']
+
+- name: Restore | [{{ svc.key }}] | Fail if no backups found
+  fail:
+    msg: "No backups found for prefix '{{ artifact_prefix }}' in {{ restore_source_remote_base ~ svc.value.source.path_dir }}"
+  when:
+    - restore_selection_mode in ['latest', 'oldest']
+    - restore_sorted_backups | length == 0
+
+- name: Restore | [{{ svc.key }}] | Select artifact filename
+  set_fact:
+    artifact_filename: >-
+      {{
+        restore_sorted_backups[0].Name
+        if restore_selection_mode == 'latest'
+        else restore_sorted_backups[-1].Name
+      }}
+  when: restore_selection_mode in ['latest', 'oldest']
+
+#----------------------------------------------------------
+- name: Restore | [{{ svc.key }}] | Selected artifact
+  debug:
+    msg: "[restore-resolve] service={{ svc.key }} selected={{ artifact_filename }} mode={{ restore_selection_mode }}"

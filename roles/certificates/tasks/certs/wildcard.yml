@@ -1,0 +1,33 @@
+############################################################
+# Wildcard certificate (ingress) — stable, idempotent
+############################################################
+
+- name: Generate wildcard private key (if missing)
+  command: >
+    openssl genrsa -out {{ user_cert_ca.local_machine.dir }}/{{ wildcard_certificate.name }}.key 4096
+  args:
+    creates: "{{ user_cert_ca.local_machine.dir }}/{{ wildcard_certificate.name }}.key"
+
+- name: Deploy OpenSSL SAN config (wildcard cert)
+  template:
+    src: openssl-san.cnf.j2
+    dest: "{{ user_cert_ca.local_machine.dir }}/openssl-wildcard.cnf"
+    owner: root
+    group: root
+    mode: "0600"
+  vars:
+    cert_common_name: "{{ wildcard_certificate.common_name }}"
+    cert_dns_names: "{{ wildcard_certificate.dns_names }}"
+
+- name: Generate wildcard self-signed certificate (if missing)
+  command: >
+    openssl req -x509 -new -nodes
+    -key {{ user_cert_ca.local_machine.dir }}/{{ wildcard_certificate.name }}.key
+    -sha256
+    -days {{ user_cert_ca.local_machine.days }}
+    -out {{ user_cert_ca.local_machine.dir }}/{{ wildcard_certificate.name }}.crt
+    -config {{ user_cert_ca.local_machine.dir }}/openssl-wildcard.cnf
+    -extensions v3_req
+  args:
+    creates: "{{ user_cert_ca.local_machine.dir }}/{{ wildcard_certificate.name }}.crt"
+  notify: update ca trust

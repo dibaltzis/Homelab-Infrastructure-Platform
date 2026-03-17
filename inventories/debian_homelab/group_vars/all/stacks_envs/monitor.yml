@@ -1,0 +1,38 @@
+TIME_ZONE: "{{ timezone }}"
+PUID: "{{ primary_user_uid }}"
+PGID: "{{ primary_user_gid }}"
+
+IPERF3_PORT: 5201
+
+GATUS_PATH: "{{ containers.data_dir }}/gatus"
+
+PROMETHEUS_PATH: "{{ containers.data_dir }}/prometheus"
+LOKI_PATH: "{{ containers.data_dir }}/loki"
+PROMTAIL_PATH: "{{ containers.data_dir }}/promtail"
+ALERTMANAGER_PATH: "{{ containers.data_dir }}/alertmanager"
+ALERTMANAGER_PUBLIC_URL: "https://{{ ingress_services.alertmanager.host_prefix }}.{{ ingress_domain }}"
+
+GRAFANA_PATH: "{{ containers.data_dir }}/grafana"
+GRAFANA_DATA_PATH: "{{ GRAFANA_PATH }}/data"
+GRAFANA_CONFIG_PATH: "{{ GRAFANA_PATH }}/config"
+GRAFANA_PROVISIONING_PATH: "{{ GRAFANA_PATH }}/provisioning"
+GRAFANA_DASHBOARDS_PATH: "{{ GRAFANA_PATH }}/dashboards"
+GRAFANA_ADMIN_USER: "{{ secrets['stacks_envs/monitor/grafana/admin_user'] }}"
+GRAFANA_ADMIN_PASSWORD: "{{ secrets['stacks_envs/monitor/grafana/admin_password'] }}"
+
+
+ADGUARD_EXPORTER_ADMIN_USER: "{{ secrets['services/dns/adguard_admin_user'] }}"
+ADGUARD_EXPORTER_ADMIN_PASSWORD: "{{ secrets['services/dns/adguard_admin_plain_password'] }}"
+
+POSTGRES_EXPORTER_USER: "{{ secrets['stacks_envs/database/postgres/user'] }}"
+POSTGRES_EXPORTER_PASSWORD: "{{ secrets['stacks_envs/database/postgres/password'] }}"
+
+
+# Core monitoring stack
+GRAFANA_VERSION: "12.3.3"
+PROMETHEUS_VERSION: "v3.5.1"
+ALERTMANAGER_VERSION: "v0.31.1"
+LOKI_VERSION: "3.6.6"
+PROMTAIL_VERSION: "3.6.6"
+NODE_EXPORTER_VERSION: "v1.10.2"
+CADVISOR_VERSION: "0.56.2"

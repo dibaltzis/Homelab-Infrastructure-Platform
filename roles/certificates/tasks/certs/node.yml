@@ -1,0 +1,81 @@
+############################################################
+# Node certificate (machine identity) — regen ONLY if IP changes
+############################################################
+
+- name: Read last known node IP (if exists)
+  slurp:
+    src: "{{ user_cert_ca.local_machine.dir }}/.last_node_ip"
+  register: last_node_ip_file
+  ignore_errors: true
+
+- name: Set last_node_ip fact
+  set_fact:
+    last_node_ip: >-
+      {{
+        (last_node_ip_file.content | b64decode | trim)
+        if last_node_ip_file is defined and last_node_ip_file.content is defined
+        else ''
+      }}
+
+- name: Determine if node IP changed
+  set_fact:
+    node_ip_changed: "{{ last_node_ip != homelab_node.ip }}"
+
+- name: Check if node cert exists
+  stat:
+    path: "{{ user_cert_ca.local_machine.dir }}/{{ user_cert_ca.local_machine.name }}.crt"
+  register: node_cert_stat
+
+- name: Remove existing node cert, key and config if regeneration is required
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ user_cert_ca.local_machine.dir }}/{{ user_cert_ca.local_machine.name }}.crt"
+    - "{{ user_cert_ca.local_machine.dir }}/{{ user_cert_ca.local_machine.name }}.key"
+    - "{{ user_cert_ca.local_machine.dir }}/openssl-node.cnf"
+  when: node_ip_changed or not node_cert_stat.stat.exists
+
+- name: Generate node private key
+  command: >
+    openssl genrsa -out {{ user_cert_ca.local_machine.dir }}/{{ user_cert_ca.local_machine.name }}.key 4096
+  when: node_ip_changed or not node_cert_stat.stat.exists
+
+- name: Deploy OpenSSL SAN config (node cert)
+  template:
+    src: openssl-san.cnf.j2
+    dest: "{{ user_cert_ca.local_machine.dir }}/openssl-node.cnf"
+    owner: root
+    group: root
+    mode: "0600"
+  vars:
+    cert_common_name: "{{ user_cert_ca.local_machine.common_name }}"
+    cert_dns_names:
+      - "{{ homelab_node.name }}"
+      - "{{ homelab_node.hostname }}"
+    cert_ip_names:
+      - "{{ homelab_node.ip }}"
+  when: node_ip_changed or not node_cert_stat.stat.exists
+
+- name: Generate node self-signed certificate with SANs
+  command: >
+    openssl req -x509 -new -nodes
+    -key {{ user_cert_ca.local_machine.dir }}/{{ user_cert_ca.local_machine.name }}.key
+    -sha256
+    -days {{ user_cert_ca.local_machine.days }}
+    -out {{ user_cert_ca.local_machine.dir }}/{{ user_cert_ca.local_machine.name }}.crt
+    -config {{ user_cert_ca.local_machine.dir }}/openssl-node.cnf
+    -extensions v3_req
+  when: node_ip_changed or not node_cert_stat.stat.exists
+  notify:
+    - update ca trust
+    - restart docker
+
+- name: Persist current node IP
+  copy:
+    content: "{{ homelab_node.ip }}"
+    dest: "{{ user_cert_ca.local_machine.dir }}/.last_node_ip"
+    owner: root
+    group: root
+    mode: "0600"
+  when: node_ip_changed or not node_cert_stat.stat.exists

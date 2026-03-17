@@ -1,0 +1,20 @@
+- name: "[stacks/database/handlers] ensure postgres dependent containers are present"
+  command: docker inspect {{ db.container }}
+  register: container_ready
+  retries: 10
+  delay: 2
+  until: container_ready.rc == 0
+  changed_when: false
+  listen: restart postgres dependent services
+  loop: "{{ postgres_databases }}"
+  loop_control:
+    loop_var: db
+    label: "{{ db.container }}"
+
+- name: "[stacks/database/handlers] restart postgres dependent containers"
+  command: docker restart {{ db.container }}
+  listen: restart postgres dependent services
+  loop: "{{ postgres_databases }}"
+  loop_control:
+    loop_var: db
+    label: "{{ db.container }}"

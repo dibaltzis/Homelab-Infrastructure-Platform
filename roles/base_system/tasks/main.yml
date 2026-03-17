@@ -1,0 +1,21 @@
+---
+- name: Set timezone
+  timezone:
+    name: "{{ timezone }}"
+
+- name: Set system locale
+  command: localectl set-locale LANG={{ locale }}
+  changed_when: false
+
+############################################################
+# Homelab host identity 
+############################################################
+
+- name: Show homelab identity
+  debug:
+    msg:
+      - "Hostname: {{ homelab_node.hostname }}"
+      - "Node name: {{ homelab_node.name }}"
+      - "FQDN: {{ homelab_node.fqdn }}"
+      - "IP: {{ homelab_node.ip}}"
+      - "Subnet: {{ homelab_node.subnet}}"

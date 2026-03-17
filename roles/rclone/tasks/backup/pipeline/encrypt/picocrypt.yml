@@ -1,0 +1,15 @@
+- name: Backup | [{{ svc.key }}] | Encrypt archive with Picocrypt
+  command:
+    argv:
+      - /usr/local/bin/picocrypt
+      - -p
+      - "{{ svc.value.crypto.password }}"
+      - "{{ rclone_tmp_archives }}/{{ archive_filename }}"
+  register: picocrypt_encrypt_result
+  changed_when: picocrypt_encrypt_result.rc == 0
+  no_log: true
+
+- name: Backup | [{{ svc.key }}] | Remove plain archive after encryption
+  file:
+    path: "{{ rclone_tmp_archives }}/{{ archive_filename }}"
+    state: absent

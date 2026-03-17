@@ -1,0 +1,35 @@
+{{ define "discord.title" -}}
+[{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}
+{{- end }}
+
+{{ define "discord.message" -}}
+
+**Alert:** {{ .CommonLabels.alertname }}
+
+{{- if .CommonLabels.container_label_com_docker_compose_service }}
+**Service:** {{ .CommonLabels.container_label_com_docker_compose_service }}
+{{- else if .CommonLabels.name }}
+**Container:** {{ .CommonLabels.name }}
+{{- end }}
+
+{{- if .CommonLabels.instance }}
+**Host:** {{ reReplaceAll ":.*" "" .CommonLabels.instance }}
+{{- end }}
+
+{{- if .CommonLabels.severity }}
+**Severity:** {{ .CommonLabels.severity | toUpper }}
+{{- end }}
+
+{{- if .CommonAnnotations.summary }}
+
+**Summary**
+{{ .CommonAnnotations.summary }}
+{{- end }}
+
+{{- if .CommonAnnotations.description }}
+
+**Description**
+{{ .CommonAnnotations.description }}
+{{- end }}
+
+{{- end }}

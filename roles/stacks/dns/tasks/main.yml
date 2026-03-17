@@ -1,0 +1,13 @@
+- name: Bootstrap dns stack
+  include_tasks: "{{ role_path }}/../tasks/stack_setup.yml"
+  vars:
+    stack_name: "dns"
+
+    stack_env_template: "dns.env.j2"
+    stack_compose_template: "docker-compose.yml.j2"
+
+    stack_data_dirs:
+      - path: "{{ ADGUARD_CONFIG_PATH }}"
+        mode: "0700"
+      - path: "{{ ADGUARD_DATA_PATH }}"
+        mode: "0700"

@@ -1,0 +1,25 @@
+- name: Check secrets backend
+  include_tasks: "{{ secrets_service }}/check.yml"
+
+- name: Install secrets backend if needed
+  include_tasks: "{{ secrets_service }}/install.yml"
+  when: not secrets_backend_client_installed | default(false)
+
+- name: Initialize secrets dict
+  set_fact:
+    secrets: {}
+  run_once: true
+
+- name: Fetch secrets from backend
+  include_tasks: "{{ secrets_service }}/fetch.yml"
+
+- name: Sanity check secrets backend
+  assert:
+    that:
+      - "'connection-check' in secrets"
+      - secrets['connection-check'] == "it_works"
+    fail_msg: >
+      Secrets backend failed. Cannot read expected test secret.
+      Check access token, project id, or prefix configuration.
+    success_msg: Secrets backend OK
+  run_once: true

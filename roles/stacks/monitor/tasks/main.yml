@@ -1,0 +1,120 @@
+- name: Configure monitor stack
+  include_tasks: "{{ role_path }}/../tasks/stack_setup.yml"
+  vars:
+    stack_name: "monitor"
+
+    stack_env_template: "monitor.env.j2"
+    stack_compose_template: "docker-compose.yml.j2"
+
+    stack_data_dirs:
+      - path: "{{ GATUS_PATH }}"
+        owner: "999"
+        group: "999"
+      - path: "{{ PROMETHEUS_PATH }}"
+        owner: "65534"
+        group: "65534"
+      - path: "{{ PROMETHEUS_PATH }}/rules"
+        owner: "65534"
+        group: "65534"
+      - path: "{{ ALERTMANAGER_PATH }}"
+        owner: "65534"
+        group: "65534"
+      - path: "{{ ALERTMANAGER_PATH }}/templates"
+        owner: "65534"
+        group: "65534"
+      - path: "{{ LOKI_PATH }}"
+        owner: "10001"
+        group: "10001"
+      - path: "{{ LOKI_PATH }}/rules"
+        owner: "10001"
+        group: "10001"
+      - path: "{{ PROMTAIL_PATH }}"
+        owner: "0"
+        group: "0"
+      - path: "{{ GRAFANA_PATH }}"
+        owner: "472"
+        group: "472"
+      - path: "{{ GRAFANA_DATA_PATH }}"
+        owner: "472"
+        group: "472"
+      - path: "{{ GRAFANA_CONFIG_PATH }}"
+        owner: "472"
+        group: "472"
+      - path: "{{ GRAFANA_PROVISIONING_PATH }}"
+        owner: "472"
+        group: "472"
+      - path: "{{ GRAFANA_PROVISIONING_PATH }}/datasources"
+        owner: "472"
+        group: "472"
+      - path: "{{ GRAFANA_PROVISIONING_PATH }}/dashboards"
+        owner: "472"
+        group: "472"
+      - path: "{{ GRAFANA_PROVISIONING_PATH }}/alerting"
+        owner: "472"
+        group: "472"
+      - path: "{{ GRAFANA_DASHBOARDS_PATH }}"
+        owner: "472"
+        group: "472"
+
+    stack_templates:
+      - src: grafana/grafana.ini.j2
+        dest: "{{ GRAFANA_CONFIG_PATH }}/grafana.ini"
+        owner: "472"
+        group: "472"
+        mode: "0640"
+        notify: restart grafana
+      - src: grafana/datasources.yaml.j2
+        dest: "{{ GRAFANA_PROVISIONING_PATH }}/datasources/datasources.yaml"
+        owner: "472"
+        group: "472"
+        mode: "0640"
+        notify: restart grafana
+      - src: grafana/dashboards.yaml.j2
+        dest: "{{ GRAFANA_PROVISIONING_PATH }}/dashboards/dashboards.yaml"
+        owner: "472"
+        group: "472"
+        mode: "0640"
+        notify: restart grafana
+        
+      - src: gatus/config.yml.j2
+        dest: "{{ GATUS_PATH }}/config.yml"
+        notify: restart gatus
+
+      - src: prometheus/prometheus.yml.j2
+        dest: "{{ PROMETHEUS_PATH }}/prometheus.yml"
+        notify: restart prometheus
+
+      - src: alertmanager/alertmanager.yml.j2
+        dest: "{{ ALERTMANAGER_PATH }}/alertmanager.yml"
+        notify: restart alertmanager
+
+      - src: loki/config.yml.j2
+        dest: "{{ LOKI_PATH }}/loki-config.yml"
+        notify: restart loki
+
+      - src: promtail/promtail.yml.j2
+        dest: "{{ PROMTAIL_PATH }}/promtail.yml"
+
+    stack_file_copies:
+      - src: grafana/dashboards/
+        dest: "{{ GRAFANA_DASHBOARDS_PATH }}/"
+        owner: "472"
+        group: "472"
+        mode: "0644"
+        notify: restart grafana
+
+      - src: prometheus/rules/
+        dest: "{{ PROMETHEUS_PATH }}/rules/"
+        mode: "0644"
+        notify: restart prometheus
+
+      - src: alertmanager/services_templates
+        dest: "{{ ALERTMANAGER_PATH }}/templates/"
+        mode: "0644"
+        notify: restart alertmanager
+
+      - src: loki/rules/
+        dest: "{{ LOKI_PATH }}/rules/"
+        mode: "0644"
+        notify: restart loki
+

@@ -1,0 +1,33 @@
+############################
+# Containers - General settings
+############################
+containers:
+  base_dir: /srv/containers        # Docker Compose repositories
+  data_dir: /srv/docker-data      # Persistent container data 
+  enabled:
+  - tailscale
+  - ingress
+  - database
+  - dns
+  - dev
+  - monitor
+  - iot
+
+containers_active: >-
+  {{
+    (
+      stacks
+      if stacks is sequence and stacks is not string
+      else
+      (
+        stacks | from_yaml
+        if (stacks is string and stacks.startswith('['))
+        else
+        (
+          [stacks]
+          if stacks is defined
+          else containers.enabled
+        )
+      )
+    )
+  }}

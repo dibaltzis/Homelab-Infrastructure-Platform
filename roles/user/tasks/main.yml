@@ -1,0 +1,50 @@
+---
+- name: Ensure primary groups exist
+  group:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ primary_user_groups | default([]) }}"
+
+- name: Ensure primary user exists
+  user:
+    name: "{{ primary_user }}"
+    state: present
+    shell: /bin/bash
+    create_home: true
+    groups: "{{ primary_user_groups | default([]) }}"
+    append: true
+    password: "{{ primary_user_password_hash | default(omit) }}"
+    update_password: on_create
+
+- name: Allow passwordless sudo for primary user (for automation)
+  copy:
+    dest: "/etc/sudoers.d/{{ primary_user }}"
+    content: "{{ primary_user }} ALL=(ALL) NOPASSWD:ALL\n"
+    mode: "0440"
+    validate: "visudo -cf %s"
+
+- name: Ensure .ssh directory exists for primary user
+  file:
+    path: "~{{ primary_user }}/.ssh"
+    state: directory
+    owner: "{{ primary_user }}"
+    group: "{{ primary_user }}"
+    mode: "0700"
+
+- name: Install authorized SSH keys for primary user from files
+  authorized_key:
+    user: "{{ primary_user }}"
+    state: present
+    key: "{{ lookup('file', item) }}"
+  loop: "{{ lookup('fileglob', role_path + '/files/authorized_keys/*.pub', wantlist=True) }}"
+  loop_control:
+    label: "{{ item | basename }}"
+
+- name: Install authorized SSH keys from vault
+  authorized_key:
+    user: "{{ primary_user }}"
+    state: present
+    key: "{{ item.key }}"
+  loop: "{{ authorized_ssh_keys | default([]) }}"
+  loop_control:
+    label: "{{ item.name }}"

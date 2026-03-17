@@ -1,0 +1,7 @@
+- name: "[stacks/ingress/post_config/nginx] Wait for reverse-proxy container"
+  shell: docker inspect --format='{{ "{{.State.Health.Status}}" }}' reverse-proxy
+  register: nginx_health
+  retries: 20
+  delay: 2
+  until: nginx_health.stdout == "healthy"
+  changed_when: false

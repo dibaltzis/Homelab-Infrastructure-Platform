@@ -1,0 +1,94 @@
+############################################################
+# Tailscale exit node setup (Docker + nftables, correct way)
+############################################################
+
+- name: Install nftables MASQUERADE script for Tailscale exit node
+  copy:
+    dest: /usr/local/sbin/tailscale-nft.sh
+    mode: "0755"
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      TABLE="inet"
+      NAT_TABLE="nat"
+      CHAIN="postrouting"
+      IFACE="{{ ansible_default_ipv4.interface }}"
+
+      # Ensure nat table exists
+      nft list table $TABLE $NAT_TABLE >/dev/null 2>&1 || \
+        nft add table $TABLE $NAT_TABLE
+
+      # Ensure postrouting chain exists with correct priority
+      nft list chain $TABLE $NAT_TABLE $CHAIN >/dev/null 2>&1 || \
+        nft add chain $TABLE $NAT_TABLE $CHAIN '{ type nat hook postrouting priority srcnat; }'
+
+      # Add masquerade rule only if missing
+      nft list chain $TABLE $NAT_TABLE $CHAIN | grep -q "oif \"$IFACE\" masquerade" || \
+        nft add rule $TABLE $NAT_TABLE $CHAIN oif "$IFACE" masquerade
+
+- name: Install systemd unit to enforce nft rule on boot
+  copy:
+    dest: /etc/systemd/system/tailscale-nft.service
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=nftables MASQUERADE for Tailscale exit node
+      After=network-online.target docker.service
+      Wants=network-online.target
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/local/sbin/tailscale-nft.sh
+      RemainAfterExit=yes
+
+      [Install]
+      WantedBy=multi-user.target
+
+- name: Enable nft rule injector
+  systemd:
+    name: tailscale-nft
+    enabled: true
+    state: started
+    daemon_reload: true
+
+############################################################
+# Kernel settings required for exit node routing
+############################################################
+
+- name: Disable rp_filter (required for Tailscale exit node)
+  sysctl:
+    name: net.ipv4.conf.all.rp_filter
+    value: "0"
+    state: present
+    reload: yes
+
+- name: Enable IP forwarding
+  sysctl:
+    name: "{{ sysctl_key }}"
+    value: "1"
+    state: present
+    reload: yes
+  loop:
+    - net.ipv4.ip_forward
+    - net.ipv6.conf.all.forwarding
+  loop_control: 
+    loop_var: sysctl_key
+
+############################################################
+# Docker stack setup
+############################################################
+
+- name: Configure tailscale stack
+  include_tasks: "{{ role_path }}/../tasks/stack_setup.yml"
+  vars:
+    stack_name: "tailscale"
+
+    stack_env_template: "tailscale.env.j2"
+    stack_compose_template: "docker-compose.yml.j2"
+
+    stack_data_dirs:
+      - path: "{{ TAILSCALE_STATE_DIR }}"
+        owner: "root"
+        group: "root"
+        mode: "0700"

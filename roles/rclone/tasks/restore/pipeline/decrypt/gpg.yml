@@ -1,0 +1,29 @@
+- name: Restore | [{{ svc.key }}] | Import GPG private key
+  command: gpg --batch --import
+  args:
+    stdin: "{{ svc.value.crypto.private_key }}"
+  register: gpg_import_private
+  changed_when: "'imported' in gpg_import_private.stderr"
+  no_log: true
+
+- name: Restore | [{{ svc.key }}] | Decrypt archive with GPG
+  command: >
+    gpg --batch --yes
+    --output {{ restore_decrypted_path }}
+    --decrypt
+    {{ restore_encrypted_path }}
+  register: gpg_decrypt_result
+  no_log: true
+
+- name: Restore | [{{ svc.key }}] | Create decrypt marker
+  file:
+    path: "{{ restore_decrypt_marker }}"
+    state: touch
+
+- name: Restore | [{{ svc.key }}] | Update decrypt marker state
+  set_fact:
+    restore_markers: "{{ restore_markers | combine({'decrypt': true}) }}"
+
+- name: Restore | [{{ svc.key }}] | Decrypt result
+  debug:
+    msg: "[decrypt-gpg] service={{ svc.key }} output={{ restore_decrypted_path }}"

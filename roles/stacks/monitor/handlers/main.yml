@@ -1,0 +1,14 @@
+- name: restart prometheus
+  command: docker restart prometheus
+
+- name: restart grafana
+  command: docker restart grafana
+
+- name: restart alertmanager
+  command: docker restart alertmanager
+
+- name: restart loki
+  command: docker restart loki
+
+- name: restart gatus
+  command: docker restart gatus

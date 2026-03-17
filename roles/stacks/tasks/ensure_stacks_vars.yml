@@ -1,0 +1,24 @@
+---
+- name: Ensure primary user exists (hard requirement)
+  getent:
+    database: passwd
+    key: "{{ primary_user }}"
+
+- name: Get primary user UID
+  command: id -u {{ primary_user }}
+  register: _uid
+  changed_when: false
+
+- name: Get primary user GID
+  command: id -g {{ primary_user }}
+  register: _gid
+  changed_when: false
+
+- name: Set local UID/GID for this role
+  set_fact:
+    primary_user_uid: "{{ _uid.stdout }}"
+    primary_user_gid: "{{ _gid.stdout }}"
+    
+
+
+ 

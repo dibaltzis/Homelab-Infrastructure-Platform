@@ -1,0 +1,11 @@
+primary_user: homelab_user
+primary_user_password_hash: "{{ secrets['core/user/primary_user/password_hash'] }}"
+primary_user_groups:
+  - sudo
+  - libvirt
+  - docker
+
+authorized_ssh_keys:
+  - name: id_ed25519_homelab_vm
+    key: "{{ secrets['ssh/authorized_keys/id_ed25519_homelab_vm'] }}"
+    

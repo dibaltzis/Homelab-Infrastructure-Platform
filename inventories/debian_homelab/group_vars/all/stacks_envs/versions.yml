@@ -1,0 +1,96 @@
+container_images:
+  database:
+    postgres:
+      repo: postgres
+      tag: "16"
+    adminer:
+      repo: adminer
+      tag: "latest"
+
+  dns:
+    adguardhome:
+      repo: adguard/adguardhome
+      tag: "latest"
+
+  tailscale:
+    tailscale:
+      repo: tailscale/tailscale
+      tag: "stable"
+
+  ingress:
+    reverse_proxy:
+      repo: nginx
+      tag: "stable"
+    authelia:
+      repo: authelia/authelia
+      tag: "latest"
+    dashboard:
+      repo: nginx
+      tag: "stable"
+
+  monitor:
+    grafana:
+      repo: grafana/grafana
+      tag: "12.3.3"
+    prometheus:
+      repo: prom/prometheus
+      tag: "v3.5.1"
+    alertmanager:
+      repo: prom/alertmanager
+      tag: "v0.31.1"
+    loki:
+      repo: grafana/loki
+      tag: "3.6.6"
+    promtail:
+      repo: grafana/promtail
+      tag: "3.6.6"
+    node_exporter:
+      repo: prom/node-exporter
+      tag: "v1.10.2"
+    cadvisor:
+      repo: ghcr.io/google/cadvisor
+      tag: "0.56.2"
+    gatus:
+      repo: twinproduction/gatus
+      tag: "latest"
+    openspeedtest:
+      repo: openspeedtest/latest
+      tag: "latest"
+    iperf3_server:
+      repo: taoyou/iperf3-alpine
+      tag: "latest"
+    dashboard_metrics_agent:
+      repo: ghcr.io/dibaltzis/dashboard-metrics-agent
+      tag: "latest"
+    adguard_exporter:
+      repo: ghcr.io/henrywhitaker3/adguard-exporter
+      tag: "latest"
+    postgres_exporter:
+      repo: quay.io/prometheuscommunity/postgres-exporter
+      tag: "latest"
+
+  dev:
+    gitea:
+      repo: gitea/gitea
+      tag: "latest"
+    registry_server:
+      repo: registry
+      tag: "2.8.2"
+    registry_ui:
+      repo: joxit/docker-registry-ui
+      tag: "main"
+    jenkins:
+      repo: jenkins/jenkins
+      tag: "lts"
+    it_tools:
+      repo: corentinth/it-tools
+      tag: "latest"
+
+  iot:
+    home_assistant:
+      repo: homeassistant/home-assistant
+      tag: "stable"
+
+    hyperion:
+      repo: foorschtbar/hyperion
+      tag: "latest"

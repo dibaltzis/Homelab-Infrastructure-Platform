@@ -1,0 +1,43 @@
+- name: Verify | [{{ svc.key }}] | Get local artifact stats
+  stat:
+    path: "{{ artifact_local_path }}"
+  register: local_archive
+
+- name: Verify | [{{ svc.key }}] | Fail if local artifact missing
+  fail:
+    msg: "Artifact missing: {{ artifact_local_path }}"
+  when: not local_archive.stat.exists
+
+- name: Verify | [{{ svc.key }}] | Query remote artifact metadata
+  command: >
+    docker run --rm
+    -v {{ rclone_config_dir }}:{{ rclone_container_config_dir }}:ro
+    {{ rclone_container_image }}
+    lsjson
+    {{ artifact_remote_path }}
+    --config {{ rclone_container_config_file }}
+  register: remote_lsjson
+  changed_when: false
+
+- name: Verify | [{{ svc.key }}] | Parse remote file metadata
+  set_fact:
+    remote_file: "{{ (remote_lsjson.stdout | from_json | first | default({})) }}"
+
+- name: Verify | [{{ svc.key }}] | Fail if artifact missing on remote
+  fail:
+    msg: "Remote artifact not found: {{ artifact_remote_path }}"
+  when: remote_file == {}
+
+- name: Verify | [{{ svc.key }}] | Compare sizes
+  fail:
+    msg: >
+      Size mismatch
+      local={{ local_archive.stat.size }}
+      remote={{ remote_file.Size }}
+  when:
+    - remote_file.Size is defined
+    - remote_file.Size != local_archive.stat.size
+
+- name: Verify | [{{ svc.key }}] | Success
+  debug:
+    msg: "[rclone-verify] Verified {{ artifact_local_path }}"

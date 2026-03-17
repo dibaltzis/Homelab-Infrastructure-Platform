@@ -1,0 +1,82 @@
+---
+- name: Install Samba packages
+  apt:
+    name:
+      - samba
+      - samba-common-bin
+    state: present
+    update_cache: true
+  
+
+- name: Ensure Samba services are enabled and started
+  systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  loop:
+    - smbd
+    - nmbd
+  
+
+- name: Ensure Samba share directories exist
+  file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ primary_user }}"
+    group: "{{ primary_user }}"
+    mode: "0770"
+  loop: "{{ samba_shares }}"
+  loop_control:
+    label: "{{ item.name }}"
+  
+
+- name: Ensure OS users exist for Samba users
+  user:
+    name: "{{ item.name }}"
+    system: true
+    create_home: false
+    home: /nonexistent
+    shell: /usr/sbin/nologin
+    state: present
+  loop: "{{ samba_users }}"
+  loop_control:
+    label: "{{ item.name }}"
+  
+  no_log: true
+
+# Samba users must exist at OS level first 
+- name: Set Samba password every run
+  shell: |
+    (echo '{{ item.password }}'; echo '{{ item.password }}') | smbpasswd -s -a {{ item.name }}
+  args:
+    executable: /bin/bash
+  no_log: true
+  loop: "{{ samba_users }}"
+  
+
+- name: Enable Samba users
+  command: smbpasswd -e {{ item.name }}
+  loop: "{{ samba_users }}"
+  loop_control:
+    label: "{{ item.name }}"
+  
+
+# Backup original config once
+- name: Backup smb.conf if not already backed up
+  copy:
+    src: /etc/samba/smb.conf
+    dest: /etc/samba/smb.conf.ansible.bak
+    remote_src: true
+    force: false
+  
+
+- name: Deploy Samba configuration
+  template:
+    src: smb.conf.j2
+    dest: /etc/samba/smb.conf
+    owner: root
+    group: root
+    mode: "0644"
+    validate: "testparm -s %s"
+  notify: restart samba
+  

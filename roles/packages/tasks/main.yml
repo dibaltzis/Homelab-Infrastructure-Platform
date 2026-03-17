@@ -1,0 +1,28 @@
+---
+- name: Ensure basic utilities are installed
+  package:
+    name:
+      - nano
+      - curl
+      - wget
+      - git
+      - unzip
+      - zip
+      - htop
+      - jq
+      - nftables
+    state: present
+
+- name: Check if Docker is installed
+  command: docker --version
+  register: docker_check
+  failed_when: false
+  changed_when: false
+
+- name: Install docker
+  include_tasks: install_docker.yml
+  when:
+    - docker_check is defined
+    - docker_check.rc != 0
+
+

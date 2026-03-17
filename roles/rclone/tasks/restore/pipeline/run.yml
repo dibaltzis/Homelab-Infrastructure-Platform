@@ -1,0 +1,47 @@
+- name: Restore | [{{ svc.key }}] | Download stage
+  include_tasks: restore/pipeline/stages/download.yml
+
+- name: Restore | [{{ svc.key }}] | Verify download stage
+  include_tasks: shared_stages/verify_artifact.yml
+  vars:
+    artifact_local_path: "{{ restore_encrypted_path }}"
+    artifact_remote_path: "{{ restore_artifact_remote_path }}"
+  when:
+    - svc.value.source is defined
+
+- name: Restore | [{{ svc.key }}] | Check restore markers
+  stat:
+    path: "{{ item }}"
+  loop:
+    - "{{ restore_unarchive_marker }}"
+    - "{{ restore_decrypt_marker }}"
+    - "{{ restore_decrypted_path }}"
+    - "{{ restore_encrypted_path }}"
+  register: restore_marker_stats
+
+- name: Restore | [{{ svc.key }}] | Build restore marker map
+  set_fact:
+    restore_markers:
+      unarchive: "{{ restore_marker_stats.results[0].stat.exists }}"
+      decrypt: "{{ restore_marker_stats.results[1].stat.exists }}"
+      decrypted: "{{ restore_marker_stats.results[2].stat.exists }}"
+      encrypted: "{{ restore_marker_stats.results[3].stat.exists }}"
+
+- name: Restore | [{{ svc.key }}] | Decrypt stage
+  include_tasks: "restore/pipeline/decrypt/{{ svc.value.crypto.tool }}.yml"
+  when:
+    - svc.value.crypto.enabled | default(false)
+    - restore_markers.encrypted
+    - not restore_markers.decrypt
+
+- name: Restore | [{{ svc.key }}] | Unarchive stage
+  include_tasks: restore/pipeline/stages/unarchive.yml
+  when:
+    - svc.value.archive.enabled | default(false)
+    - restore_markers.decrypt
+    - not restore_markers.unarchive
+
+- name: Restore | [{{ svc.key }}] | Cleanup stage
+  include_tasks: restore/pipeline/stages/cleanup.yml
+  when:
+    - restore_markers.unarchive

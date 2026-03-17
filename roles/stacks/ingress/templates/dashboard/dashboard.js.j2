@@ -1,0 +1,335 @@
+/* ============================= */
+/* METRICS CONFIG                */
+/* ============================= */
+
+const METRICS = {
+  server: "https://dma-server.{{ ingress_domain }}/metrics",
+  workstation: "https://dma-ws.{{ ingress_domain }}/metrics"
+};
+
+const METRIC_TYPES = {
+  cpu:    { field: "cpu", color: "#12b4e6", max: 100, formatWs: v => `%: ${v.toFixed(1)}`, formatServer: v => `${v.toFixed(1)}%` },
+  ram:    { field: "mem", color: "#c02828", max: 100, formatWs: v => `%: ${v.toFixed(1)}`, formatServer: v => `${v.toFixed(1)}%` },
+  netUp:  { field: "tx",  displayField: "tx_h", color: "#f1c13b" },
+  netDown:{ field: "rx",  displayField: "rx_h", color: "#f1c13b" }
+};
+
+/* ============================= */
+/* CLOCK                         */
+/* ============================= */
+
+function updateClock() {
+  const now = new Date();
+
+  const time = now.toLocaleTimeString("default", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false
+  });
+
+  const date = now.toLocaleDateString("default", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric"
+  });
+
+  document.getElementById("clock").textContent = time;
+  document.getElementById("date").textContent = date;
+}
+
+setInterval(updateClock, 1000);
+updateClock();
+
+/* ============================= */
+/* CALENDAR                      */
+/* ============================= */
+let currentCalendarDate = new Date();
+
+function renderCalendar(date = currentCalendarDate) {
+  const el = document.getElementById("calendar");
+  if (!el) return;
+
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const today = new Date();
+
+  const firstDay = new Date(year, month, 1);
+  const startOffset = (firstDay.getDay() + 6) % 7; // Monday start
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const daysInPrevMonth = new Date(year, month, 0).getDate();
+
+  const dayNames = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+
+  el.innerHTML = `
+    <div class="calendar-header">
+      <button id="calPrev">◀</button>
+      <div class="calendar-title">
+        ${date.toLocaleString("default", { month: "long" })} ${year}
+      </div>
+      <button id="calNext">▶</button>
+    </div>
+    <table class="calendar-table">
+      <thead>
+        <tr>${dayNames.map(d => `<th>${d}</th>`).join("")}</tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  `;
+
+  const tbody = el.querySelector("tbody");
+  let row = document.createElement("tr");
+
+  // Previous month spillover
+  for (let i = 0; i < startOffset; i++) {
+    const cell = document.createElement("td");
+    cell.textContent = daysInPrevMonth - startOffset + i + 1;
+    cell.classList.add("calendar-muted");
+    row.appendChild(cell);
+  }
+
+  // Current month
+  for (let day = 1; day <= daysInMonth; day++) {
+    if ((row.children.length) === 7) {
+      tbody.appendChild(row);
+      row = document.createElement("tr");
+    }
+
+    const cell = document.createElement("td");
+    cell.textContent = day;
+
+    if (
+      day === today.getDate() &&
+      month === today.getMonth() &&
+      year === today.getFullYear()
+    ) {
+      cell.classList.add("today");
+    }
+
+    row.appendChild(cell);
+  }
+
+  // Next month spillover
+  while (row.children.length < 7) {
+    const cell = document.createElement("td");
+    cell.textContent = row.children.length - startOffset + 1;
+    cell.classList.add("calendar-muted");
+    row.appendChild(cell);
+  }
+
+  tbody.appendChild(row);
+
+  // Navigation
+  document.getElementById("calPrev").onclick = () => {
+    currentCalendarDate = new Date(year, month - 1, 1);
+    renderCalendar(currentCalendarDate);
+  };
+
+  document.getElementById("calNext").onclick = () => {
+    currentCalendarDate = new Date(year, month + 1, 1);
+    renderCalendar(currentCalendarDate);
+  };
+}
+
+/* Auto-update at midnight */
+function scheduleMidnightCalendarUpdate() {
+  const now = new Date();
+  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  const msUntilMidnight = tomorrow - now;
+
+  setTimeout(() => {
+    renderCalendar(new Date());
+    scheduleMidnightCalendarUpdate();
+  }, msUntilMidnight);
+}
+
+
+/* ============================= */
+/* Collapsible Instructions      */
+/* ============================= */
+
+function toggleInstructions() {
+  const el = document.getElementById("instructionsContent");
+  const btn = document.querySelector(".collapsible");
+
+  if (el.style.display === "block") {
+    el.style.display = "none";
+    btn.innerHTML = "▶ Certificate & Docker Setup Instructions (click to expand)";
+  } else {
+    el.style.display = "block";
+    btn.innerHTML = "▼ Certificate & Docker Setup Instructions (click to hide)";
+  }
+}
+
+/* ============================= */
+/* CHART FACTORY                 */
+/* ============================= */
+
+function createMiniGraph(canvasId, color, max) {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return null;
+
+  ctx.height = 100;
+
+  return new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: [],
+      datasets: [{
+        data: [],
+        borderColor: color,
+        backgroundColor: (ctx) => {
+          const chart = ctx.chart;
+          const { ctx: c, chartArea } = chart;
+          if (!chartArea) return color + "22";
+
+          const gradient = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+          gradient.addColorStop(0, color + "88");
+          gradient.addColorStop(1, color + "00");
+          return gradient;
+        },
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0.35,
+        fill: true
+      }]
+    },
+    options: {
+      animation: false,
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: { display: false },
+        y: {
+          display: false,
+          ...(max ? { min: 0, max } : {})
+        }
+      },
+      plugins: { legend: { display: false } }
+    }
+  });
+}
+
+/* ============================= */
+/* METRIC ENGINE                 */
+/* ============================= */
+
+const SOURCES = ["workstation", "server"];
+const graphsBySource = {};
+let pollingIntervals = [];
+
+function capitalize(str) {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function initGraphs() {
+  SOURCES.forEach(source => {
+    graphsBySource[source] = [];
+
+    const isServer = source === "server";
+    const prefix = isServer ? "server" : "ws";
+
+    Object.entries(METRIC_TYPES).forEach(([key, config]) => {
+
+      const graph = createMiniGraph(
+        `${prefix}${capitalize(key)}Graph`,
+        config.color,
+        config.max
+      );
+
+      if (!graph) return;
+
+      graphsBySource[source].push({
+        graph,
+        field: config.field,
+        displayField: config.displayField,
+        format: config.format
+          ? config.format
+          : isServer
+            ? config.formatServer
+            : config.formatWs,
+        valueElementId: `${prefix}${capitalize(key)}Value`
+      });
+    });
+  });
+}
+
+async function pollSource(source) {
+  try {
+    const res = await fetch(`${METRICS[source]}/history`);
+    const data = await res.json();
+    if (!data.length) return;
+
+    graphsBySource[source].forEach(cfg => {
+
+      const values = data.map(x => x[cfg.field]);
+
+      cfg.graph.data.labels = values.map(() => "");
+      cfg.graph.data.datasets[0].data = values;
+      cfg.graph.update();
+
+      const latest = data[data.length - 1];
+
+      if (cfg.displayField) {
+        document.getElementById(cfg.valueElementId).textContent =
+          latest[cfg.displayField];
+      } else {
+        document.getElementById(cfg.valueElementId).textContent =
+          cfg.format(latest[cfg.field]);
+      }
+    });
+
+  } catch (err) {
+    console.error(`Polling error for ${source}`, err);
+  }
+}
+
+function startPolling() {
+  stopPolling(); // prevent duplicates
+
+  SOURCES.forEach(source => {
+    pollSource(source);
+    const id = setInterval(() => pollSource(source), 1000);
+    pollingIntervals.push(id);
+  });
+}
+
+function stopPolling() {
+  pollingIntervals.forEach(id => clearInterval(id));
+  pollingIntervals = [];
+}
+
+/* Pause polling when tab hidden */
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    stopPolling();
+  } else {
+    startPolling();
+  }
+});
+
+/* ============================= */
+/* UPTIME                        */
+/* ============================= */
+
+async function updateUptime() {
+  try {
+    const res = await fetch(`${METRICS.server}/uptime`);
+    const data = await res.json();
+    document.getElementById("uptime").textContent = data.uptime;
+  } catch {
+    document.getElementById("uptime").textContent = "uptime unavailable";
+  }
+}
+setInterval(updateUptime, 5000);
+updateUptime();
+
+/* ============================= */
+/* INIT DASHBOARD                */
+/* ============================= */
+
+renderCalendar();
+scheduleMidnightCalendarUpdate();
+initGraphs();
+startPolling();

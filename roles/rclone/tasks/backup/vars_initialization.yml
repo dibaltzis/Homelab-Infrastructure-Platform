@@ -1,0 +1,50 @@
+- name: Generate backup timestamp 
+  set_fact:
+    backup_ts: "{{ ansible_date_time.iso8601_basic }}"
+
+- name: Initialize archive extension and crypto extension variables
+  set_fact:
+    archive_extension: >-
+      {{
+        {
+          'zip': 'zip',
+          'tar': 'tar.gz'
+        }.get(svc.value.archive.tool | default('zip'), 'zip')
+      }}
+    crypto_extension: >-
+      {{
+        {
+          'gpg': 'gpg',
+          'picocrypt': 'pcv'
+        }.get(svc.value.crypto.tool | default('gpg'), 'gpg')
+        if (svc.value.crypto.enabled | default(false))
+        else ''
+      }}
+
+- name: Initialize backup artifact names
+  set_fact:
+    archive_filename: "{{ svc.value.destination.artifact_prefix }}_{{ backup_ts }}.{{ archive_extension }}"
+
+- name: Initialize encrypted archive filename
+  set_fact:
+    encrypted_archive_filename: >-
+      {{
+        archive_filename ~ '.' ~ crypto_extension
+        if crypto_extension != ''
+        else archive_filename
+      }}
+
+- name: Initialize backup artifact context
+  set_fact:
+    backup_artifact: "{{ encrypted_archive_filename }}"
+    backup_artifact_remote_path: >-
+      {{
+        svc.value.destination.remote ~ ':' ~
+        (
+          svc.value.destination.bucket ~ '/'
+          if (svc.value.destination.bucket is defined)
+          else ''
+        ) ~
+        (svc.value.destination.path | trim('/')) ~ '/' ~
+        encrypted_archive_filename
+      }}

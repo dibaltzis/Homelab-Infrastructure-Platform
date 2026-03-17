@@ -1,0 +1,5 @@
+- name: Ensure GPG is installed (if needed)
+  package:
+    name: gnupg
+    state: present
+  when: rclone_gpg_needed | bool

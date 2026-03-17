@@ -1,0 +1,42 @@
+#grafana templates variables
+GRAFANA_HOST: "{{ ingress_services.grafana.host_prefix }}.{{ ingress_domain }}"
+GRAFANA_PUBLIC_URL: "https://{{ GRAFANA_HOST }}"
+
+GRAFANA_PROMETHEUS_DATASOURCE_URL: "http://prometheus:9090"
+GRAFANA_LOKI_DATASOURCE_URL: "http://loki:3100"
+
+GRAFANA_POSTGRES_DB:
+  HOST: "{{ postgres_container }}"
+  PORT: "{{ postgres_container_port }}" 
+  NAME: "{{ secrets['stacks_envs/monitor/grafana/postgres/name'] }}"
+  USER: "{{ secrets['stacks_envs/monitor/grafana/postgres/user'] }}"
+  PASSWORD: "{{ secrets['stacks_envs/monitor/grafana/postgres/password'] }}"
+
+
+#alertmanager templates variables
+discord_webhooks:
+  default: "{{ secrets['stacks_envs/monitor/alertmanager/discord/default'] }}"
+  infra: "{{ secrets['stacks_envs/monitor/alertmanager/discord/infra'] }}"
+  containers: "{{ secrets['stacks_envs/monitor/alertmanager/discord/containers'] }}"
+  services: "{{ secrets['stacks_envs/monitor/alertmanager/discord/services'] }}"
+  monitoring: "{{ secrets['stacks_envs/monitor/alertmanager/discord/monitoring'] }}"
+
+#gatus templates variables
+gatus_custom_endpoints:
+  - name: healthchecks
+    url: "{{ secrets['/stacks_envs/monitor/gatus/healthchecks.io/url'] }}"
+    group: external
+    interval: 60s
+    conditions:
+      - "[STATUS] == 200"
+      - "[RESPONSE_TIME] < 1000"
+
+  - name: auth-gateway
+    group: edge
+    url: "https://{{ ingress_services.authelia.host_prefix }}.{{ ingress_domain }}"
+    interval: 360s
+    client:
+      insecure: true
+    conditions:
+      - "[STATUS] == 200"
+

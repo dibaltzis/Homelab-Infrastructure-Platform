@@ -1,0 +1,57 @@
+- name: '| [{{ svc.key }}] | Start timer'
+  set_fact:
+    execution_timer_start: "{{ lookup('pipe', 'date +%s') | int }}"
+
+- name: Backup | [{{ svc.key }}] | Variables initialization
+  include_tasks: backup/vars_initialization.yml
+
+- name: Backup | Show backup intent
+  debug:
+    msg: >-
+      [rclone-backup] service={{ svc.key }}
+      artifact={{ backup_artifact }}
+      source={{ svc.value.source.path }}
+      destination={{ backup_artifact_remote_path }}
+      ts={{ backup_ts }}
+
+- name: Backup | [{{ svc.key }}] | Run pre-backup hooks
+  include_tasks: shared_stages/hooks/pre.yml
+  when: svc.value.hooks is defined
+
+- name: Backup | [{{ svc.key }}] | Archive stage
+  include_tasks: backup/pipeline/archive.yml
+  when: svc.value.source is defined
+
+- name: Backup | [{{ svc.key }}] | Encrypt archive stage
+  include_tasks: "backup/pipeline/encrypt/{{ svc.value.crypto.tool }}.yml"
+  when:
+    - svc.value.crypto is defined
+    - svc.value.crypto.enabled | default(false)
+    - svc.value.crypto.tool is defined
+
+- name: Backup | [{{ svc.key }}] | Upload archive stage
+  include_tasks: backup/pipeline/upload.yml
+  when: svc.value.destination is defined
+
+- name: Backup | [{{ svc.key }}] | Verify uploaded archive stage
+  include_tasks: shared_stages/verify_artifact.yml
+  vars:
+    artifact_local_path: "{{ rclone_tmp_archives }}/{{ backup_artifact }}"
+    artifact_remote_path: "{{ backup_artifact_remote_path }}"
+  when: 
+    - svc.value.destination is defined
+
+- name: Backup | [{{ svc.key }}] | Apply retention policy stage
+  include_tasks: backup/retention/main.yml
+  when:
+    - svc.value.retention is defined
+    - svc.value.retention.enabled | default(false)
+
+- name: Backup | [{{ svc.key }}] | Run post-backup hooks
+  include_tasks: shared_stages/hooks/post.yml
+  when: svc.value.hooks is defined
+
+- name: Backup | [{{ svc.key }}] | Calculate execution time
+  include_tasks: shared_stages/execution_timer_calculation.yml
+  vars:
+    operation_name: "{{ svc.key }}"

@@ -1,0 +1,16 @@
+shared_networks:
+  database:
+    name: shared-database-network
+    subnet: 172.21.0.0/24
+
+  ingress:
+    name: shared-ingress-network
+    subnet: 172.22.0.0/24
+
+  dev:
+    name: shared-dev-network
+    subnet: 172.23.0.0/24
+
+  monitor:
+    name: shared-monitor-network
+    subnet: 172.24.0.0/24

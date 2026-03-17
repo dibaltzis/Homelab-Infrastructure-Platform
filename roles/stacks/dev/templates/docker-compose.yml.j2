@@ -1,0 +1,106 @@
+networks:
+  shared-dev-network:
+    external: true
+
+  shared-database-network:
+    external: true
+
+  shared-ingress-network:
+    external: true
+
+
+services:
+  gitea:
+    image: "{{ container_images.dev.gitea.repo }}:{{ container_images.dev.gitea.tag }}"
+    container_name: gitea
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+    restart: unless-stopped
+    networks:
+      - shared-dev-network
+      - shared-database-network
+      - shared-ingress-network
+    ports:
+      - "${GITEA_SSH_PORT}:22"
+    environment:
+      - USER_UID=${PUID}
+      - USER_GID=${PGID}
+      - GITEA__server__ROOT_URL=${GITEA__SERVER__ROOT_URL}
+      - GITEA__server__DOMAIN=${GITEA__SERVER__DOMAIN}
+      - GITEA__server__HTTP_PORT=3000
+      - GITEA__server__SSH_DOMAIN=${GITEA__SERVER__SSH_DOMAIN}
+      - GITEA__server__SSH_PORT=${GITEA_SSH_PORT}
+      - GITEA__server__OFFLINE_MODE=true
+      - GITEA__database__DB_TYPE=postgres
+      - GITEA__database__HOST=${GITEA_DB_HOST}
+      - GITEA__database__NAME=${GITEA_DB_NAME}
+      - GITEA__database__USER=${GITEA_DB_USER}
+      - GITEA__database__PASSWD=${GITEA_DB_PASSWORD}
+    volumes:
+      - ${GITEA_DATA_PATH}:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+
+
+  registry-server:
+    image: "{{ container_images.dev.registry_server.repo }}:{{ container_images.dev.registry_server.tag }}"
+    container_name: registry-server
+    restart: unless-stopped
+    networks:
+      - shared-dev-network
+      - shared-ingress-network
+    environment:
+      REGISTRY_STORAGE_DELETE_ENABLED: 'true'
+      REGISTRY_HTTP_ADDR: 0.0.0.0:5000
+      REGISTRY_HTTP_HOST: ${REGISTRY_REVERSE_PROXY_URL}
+    volumes:
+      - ${REGISTRY_SERVER_DATA}:/var/lib/registry/docker/registry
+
+
+  registry-ui:
+    image: "{{ container_images.dev.registry_ui.repo }}:{{ container_images.dev.registry_ui.tag }}"
+    container_name: registry-ui
+    restart: unless-stopped
+    networks:
+      - shared-dev-network
+      - shared-ingress-network
+    environment:
+      - SINGLE_REGISTRY=true
+      - REGISTRY_TITLE=Docker Registry UI
+      - DELETE_IMAGES=true
+      - SHOW_CONTENT_DIGEST=true
+      - NGINX_PROXY_PASS_URL=http://registry-server:5000
+      - SHOW_CATALOG_NB_TAGS=true
+      - CATALOG_MIN_BRANCHES=1
+      - CATALOG_MAX_BRANCHES=1
+      - TAGLIST_PAGE_SIZE=100
+      - REGISTRY_SECURED=false
+      - CATALOG_ELEMENTS_LIMIT=1000
+    depends_on:
+      - registry-server
+
+
+  jenkins:
+    image: "{{ container_images.dev.jenkins.repo }}:{{ container_images.dev.jenkins.tag }}"
+    container_name: jenkins
+    restart: unless-stopped
+    networks:
+      - shared-dev-network
+      - shared-ingress-network
+    ports:
+      - "${JENKINS_PORT}:50000"
+    volumes:
+      - ${JENKINS_HOME_PATH}:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - TZ=${TIME_ZONE}
+      - JENKINS_URL=${JENKINS_URL}
+      - JAVA_OPTS=-Xms128m -Xmx256m
+
+
+  it-tools:
+    image: "{{ container_images.dev.it_tools.repo }}:{{ container_images.dev.it_tools.tag }}"
+    container_name: it-tools
+    restart: unless-stopped
+    networks:
+      - shared-ingress-network

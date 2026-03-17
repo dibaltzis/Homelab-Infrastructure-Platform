@@ -1,0 +1,108 @@
+- name: Build enabled restore services list
+  set_fact:
+    restore_services_enabled: >-
+      {{
+        (rclone_restores.services | default({}))
+        | dict2items
+        | selectattr('value.enabled', 'equalto', true)
+        | list
+      }}
+
+- name: Check restore markers
+  stat:
+    path: "{{ service_item.value.destination.path_dir }}/.restore_done"
+  register: restore_markers
+  loop: "{{ restore_services_enabled }}"
+  loop_control:
+    loop_var: service_item
+    label: "{{ service_item.key }}"
+
+- name: Build services that require restore
+  set_fact:
+    restore_services_pending: >-
+      {{
+        (
+          restore_markers.results
+          | selectattr('service_item.value.force_restore', 'equalto', true)
+          | map(attribute='service_item')
+          | list
+          +
+          (
+            restore_markers.results
+            | rejectattr('stat.exists')
+            | map(attribute='service_item')
+            | list
+          )
+        ) | unique
+      }}
+#basic explanation of the above logic:
+#       IF force_restore == true
+#           -> service MUST be restored
+#       ELSE IF restore marker does NOT exist
+#           -> service needs restore
+#       ELSE
+#           -> restore already completed previously
+#           -> skip service
+
+- name: Run restore pipeline per service
+  include_tasks: restore/pipeline/service_pipeline.yml
+  loop: "{{ restore_services_pending | default([]) }}"
+  loop_control:
+    loop_var: service_item
+    label: "{{ service_item.key }}"
+  vars:
+    svc: "{{ service_item }}"
+
+# ------------------------------------------------------------
+# Build restore summary
+# ------------------------------------------------------------
+- name: Check restore completion markers
+  stat:
+    path: "{{ service_item.value.destination.path_dir }}/.restore_done"
+  register: restore_marker_post
+  loop: "{{ restore_services_pending | default([]) }}"
+  loop_control:
+    loop_var: service_item
+    label: "{{ service_item.key }}"
+
+- name: Build restore summary
+  set_fact:
+    rclone_restore_results: >-
+      {{
+        (rclone_restore_results | default([]))
+        +
+        [
+          {
+            "name": item.service_item.key,
+            "source": (
+              item.service_item.value.source.remote ~ ':' ~
+              (
+                item.service_item.value.source.bucket ~ '/'
+                if (item.service_item.value.source.bucket is defined)
+                else ''
+              ) ~
+              (item.service_item.value.source.path_dir | default('')) ~ '/' ~
+              (
+                rclone_restores.services[item.service_item.key].resolved_artifact
+                | default(item.service_item.value.source.file)
+              )
+            ),
+            "destination": item.service_item.value.destination.path_dir,
+            "date": (
+              '%Y-%m-%dT%H:%M:%SZ' | strftime(item.stat.mtime | int)
+              if item.stat.exists
+              else None
+            ),
+            "duration": ((rclone_operation_timers | default({}))[item.service_item.key] | default(-1)) ~ "s",
+            "status": "success" if item.stat.exists else "failed",
+            "forced": item.service_item.value.force_restore
+          }
+        ]
+      }}
+  loop: "{{ restore_marker_post.results }}"
+  loop_control:
+    label: "{{ item.service_item.key }}"
+
+- name: Restore summary
+  debug:
+    var: rclone_restore_results

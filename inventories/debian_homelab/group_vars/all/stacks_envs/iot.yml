@@ -1,0 +1,23 @@
+TIME_ZONE: "{{ timezone }}"
+
+HOME_ASSISTANT_CONFIG_PATH: "{{ containers.data_dir }}/home-assistant/config"
+
+HYPERION_CONFIG_PATH: "{{ containers.data_dir }}/hyperion/config"
+
+#---------------------------------------------------------------------------
+# home assistant vars for configuration.yml file handled by infra_config.yml
+
+HA_TRUSTED_PROXIES:
+  - "{{ shared_networks['ingress'].subnet }}"
+  - "127.0.0.1"
+  - "{{ homelab_node.subnet }}"
+
+HA_INTERNAL_URL: "http://home-assistant:8123"
+HA_EXTERNAL_URL: "https://{{ ingress_services['home-assistant'].host_prefix }}.{{ ingress_domain }}"
+
+HOME_ASSISTANT_POSTGRES_DB:
+  USER: "{{ secrets['stacks_envs/iot/home_assistant/postgres/user'] }}"
+  PASSWORD: "{{ secrets['stacks_envs/iot/home_assistant/postgres/password'] }}"
+  HOST: "{{ postgres_container }}"
+  PORT: "{{ postgres_container_port }}"
+  NAME: "{{ secrets['stacks_envs/iot/home_assistant/postgres/name'] }}"

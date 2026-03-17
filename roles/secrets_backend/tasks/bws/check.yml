@@ -1,0 +1,17 @@
+- name: Check current bws version (if installed)
+  command: "{{ bws_install_path }} --version"
+  register: _backend_check
+  changed_when: false
+  failed_when: false
+  delegate_to: localhost
+  run_once: true
+
+- name: Mark backend readiness
+  set_fact:
+    secrets_backend_client_installed: >-
+      {{
+        (_backend_check.rc == 0)
+        and
+        (bws_version in (_backend_check.stdout | default('')))
+      }}
+  run_once: true

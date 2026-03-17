@@ -1,0 +1,25 @@
+POSTGRES_USER: "{{ secrets['stacks_envs/database/postgres/user'] }}"
+POSTGRES_PASSWORD: "{{ secrets['stacks_envs/database/postgres/password'] }}"
+postgres_container: postgres-main
+postgres_container_port: 5432
+
+postgres_databases:
+  - name: "{{ HOME_ASSISTANT_POSTGRES_DB.NAME }}"
+    user: "{{ HOME_ASSISTANT_POSTGRES_DB.USER }}"
+    password: "{{ HOME_ASSISTANT_POSTGRES_DB.PASSWORD }}"
+    container: home-assistant
+
+  - name: "{{ GITEA_POSTGRES_DB.NAME }}"
+    user: "{{ GITEA_POSTGRES_DB.USER }}"
+    password: "{{ GITEA_POSTGRES_DB.PASSWORD }}"
+    container: gitea
+
+  - name: "{{ AUTHELIA_POSTGRES_DB.NAME }}"
+    user: "{{ AUTHELIA_POSTGRES_DB.USER }}"
+    password: "{{ AUTHELIA_POSTGRES_DB.PASSWORD }}"
+    container: authelia
+  
+  - name: "{{ GRAFANA_POSTGRES_DB.NAME }}"
+    user: "{{ GRAFANA_POSTGRES_DB.USER }}"
+    password: "{{ GRAFANA_POSTGRES_DB.PASSWORD }}"
+    container: grafana

@@ -1,0 +1,23 @@
+- name: '| [{{ operation_name }}] | Stop timer'
+  set_fact:
+    execution_timer_end: "{{ lookup('pipe', 'date +%s') | int }}"
+
+- name: '| [{{ operation_name }}] | Calculate duration'
+  set_fact:
+    execution_timer_duration: >-
+      {{
+        (execution_timer_end | int) -
+        (execution_timer_start | int)
+      }}
+
+- name: '| [{{ operation_name }}] | Store duration'
+  set_fact:
+    rclone_operation_timers: >-
+      {{
+        rclone_operation_timers | default({})
+        | combine(
+            {
+              operation_name: execution_timer_duration | int
+            }
+          )
+      }}

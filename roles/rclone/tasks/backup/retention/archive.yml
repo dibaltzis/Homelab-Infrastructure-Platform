@@ -1,0 +1,92 @@
+- name: Retention | [{{ svc.key }}] | Check archive day
+  set_fact:
+    retention_is_archive_day: >-
+      {{
+        (ansible_date_time.day | int)
+        ==
+        (svc.value.retention.archive.day_of_month | int)
+      }}
+
+- name: Retention | [{{ svc.key }}] | Skip archive (no backups)
+  debug:
+    msg: >-
+      [retention-archive] service={{ svc.key }}
+      action=no_backups_found
+  when: retention_archive_candidate is none
+
+- name: Retention | [{{ svc.key }}] | Skip archive (not archive day)
+  debug:
+    msg: >-
+      [retention-archive] service={{ svc.key }}
+      today={{ ansible_date_time.day }}
+      archive_day={{ svc.value.retention.archive.day_of_month }}
+      candidate={{ retention_archive_candidate.Name }}
+      action=skip
+  when:
+    - retention_archive_candidate is not none
+    - not retention_is_archive_day
+
+- name: Retention | [{{ svc.key }}] | Check if archive already exists
+  command: >
+    docker run --rm
+    -v {{ rclone_config_dir }}:{{ rclone_container_config_dir }}:ro
+    {{ rclone_container_image }}
+    lsjson
+    {{ svc.value.retention.archive.destination.remote }}:{{ svc.value.retention.archive.destination.bucket }}/{{ svc.value.retention.archive.destination.path | trim('/') }}/{{ ansible_date_time.year }}
+    --config {{ rclone_container_config_file }}
+  register: retention_archive_lsjson
+  changed_when: false
+  failed_when: false
+  when:
+    - retention_archive_candidate is not none
+    - retention_is_archive_day
+
+- name: Retention | [{{ svc.key }}] | Detect existing archive file
+  set_fact:
+    retention_archive_exists: >-
+      {{
+        (
+          (retention_archive_lsjson.stdout | default('[]') | from_json)
+          | selectattr('Name', 'equalto', retention_archive_candidate.Name)
+          | list
+          | length
+        ) > 0
+      }}
+  when:
+    - retention_archive_candidate is not none
+    - retention_is_archive_day
+
+- name: Retention | [{{ svc.key }}] | Skip archive (already archived)
+  debug:
+    msg: >-
+      [retention-archive] service={{ svc.key }}
+      archive={{ retention_archive_candidate.Name }}
+      destination={{ svc.value.retention.archive.destination.path }}
+      action=already_present
+  when:
+    - retention_archive_candidate is not none
+    - retention_is_archive_day
+    - retention_archive_exists | default(false)
+
+- name: Retention | [{{ svc.key }}] | Archive decision
+  block:
+
+    - name: Retention | [{{ svc.key }}] | Build archive destination
+      set_fact:
+        retention_archive_remote: "{{ svc.value.retention.archive.destination.remote }}"
+        retention_archive_bucket: "{{ svc.value.retention.archive.destination.bucket }}"
+        retention_archive_path: "{{ svc.value.retention.archive.destination.path | trim('/') }}/{{ ansible_date_time.year }}"
+
+    - name: Retention | [{{ svc.key }}] | Archive newest backup
+      command: >
+        docker run --rm
+        -v {{ rclone_config_dir }}:{{ rclone_container_config_dir }}:ro
+        {{ rclone_container_image }}
+        copyto
+        {{ svc.value.destination.remote }}:{{ svc.value.destination.bucket }}/{{ svc.value.destination.path | trim('/') }}/{{ retention_archive_candidate.Name }}
+        {{ retention_archive_remote }}:{{ retention_archive_bucket }}/{{ retention_archive_path }}/{{ retention_archive_candidate.Name }}
+        --config {{ rclone_container_config_file }}
+  when:
+    - retention_archive_candidate is not none
+    - retention_is_archive_day
+    - not retention_archive_exists | default(false)

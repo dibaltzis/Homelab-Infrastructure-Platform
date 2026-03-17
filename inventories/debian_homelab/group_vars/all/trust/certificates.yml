@@ -1,0 +1,16 @@
+############################
+# Certificates
+############################
+user_cert_ca:
+  local_machine:
+    dir: /etc/homelab/certs
+    name: "{{ primary_user }}_{{ homelab_node.ip }}_homelab"
+    common_name: "{{ homelab_node.name }}"
+    days: 3650
+
+wildcard_certificate:
+  name: "wildcard.{{ ingress_domain }}"
+  common_name: "*.{{ ingress_domain }}"
+  dns_names:
+    - "*.{{ ingress_domain }}"
+    - "{{ ingress_domain }}"

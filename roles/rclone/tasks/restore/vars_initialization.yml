@@ -1,0 +1,57 @@
+- name: Restore | Build source base remote
+  set_fact:
+    restore_source_remote_base: >-
+      {{
+        svc.value.source.remote ~ ':' ~
+        (
+          svc.value.source.bucket ~ '/'
+          if (svc.value.source.bucket is defined)
+          else ''
+        )
+      }}
+
+- name: Restore | Resolve restore artifact
+  include_tasks: restore/pipeline/resolve_restore_artifact.yml
+  when: svc.value.source is defined
+
+- name: Restore | Persist resolved artifact into service definition
+  set_fact:
+    rclone_restores: >-
+      {{
+        rclone_restores
+        | combine(
+            {
+              'services': {
+                svc.key: (
+                  rclone_restores.services[svc.key]
+                  | combine({'resolved_artifact': artifact_filename})
+                )
+              }
+            },
+            recursive=True
+          )
+      }}
+
+- name: Initialize helper var - crypto_extension
+  set_fact:
+    crypto_extension: >-
+      {{
+        (
+          {
+            'gpg': 'gpg',
+            'picocrypt': 'pcv'
+          }.get(svc.value.crypto.tool | default('gpg'), 'gpg')
+        )
+        if (svc.value.crypto.enabled | default(false))
+        else ''
+      }}
+
+- name: Initialize restore execution context
+  set_fact:
+    restore_extract_dir: "{{ svc.value.destination.path_dir }}"
+    restore_encrypted_path: "{{ svc.value.destination.path_dir ~ '/' ~ artifact_filename }}"
+    restore_decrypted_path: "{{ (svc.value.destination.path_dir ~ '/' ~ artifact_filename) if crypto_extension == '' else ((svc.value.destination.path_dir ~ '/' ~ artifact_filename) | regex_replace('\\.' ~ crypto_extension ~ '$', '')) }}"
+    restore_done_marker: "{{ svc.value.destination.path_dir }}/.restore_done"
+    restore_unarchive_marker: "{{ svc.value.destination.path_dir }}/.unarchive_done"
+    restore_decrypt_marker: "{{ svc.value.destination.path_dir }}/.decrypt_done"
+    restore_artifact_remote_path: "{{ restore_source_remote_base ~ svc.value.source.path_dir ~ '/' ~ artifact_filename }}"

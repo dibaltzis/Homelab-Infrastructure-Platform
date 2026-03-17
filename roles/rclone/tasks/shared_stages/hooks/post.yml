@@ -1,0 +1,19 @@
+- name: Post-backup | [{{ svc.key }}] | Start container after backup
+  command: docker start {{ svc.value.hooks.container }}
+  register: start_result
+  failed_when: false
+  changed_when: "'Started' in start_result.stdout"
+  when:
+    - svc.value.hooks is defined
+    - svc.value.hooks.container is defined
+    - container_state.stdout == "true"
+
+- name: Post-backup | [{{ svc.key }}] | Run post-backup commands
+  command: "{{ hook_cmd }}"
+  loop: "{{ svc.value.hooks.post_commands | default([]) }}"
+  loop_control:
+    loop_var: hook_cmd
+  when:
+    - svc.value.hooks is defined
+    - svc.value.hooks.post_commands is defined
+    - container_state.stdout == "true"

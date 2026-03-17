@@ -1,0 +1,61 @@
+- name: Retention | [{{ svc.key }}] | List remote files with rclone
+  command: >
+    docker run --rm
+    -v {{ rclone_config_dir }}:{{ rclone_container_config_dir }}:ro
+    {{ rclone_container_image }}
+    lsjson
+    {{ svc.value.destination.remote }}:{{ svc.value.destination.bucket }}/{{ svc.value.destination.path | trim('/') }}
+    --config {{ rclone_container_config_file }}
+  register: retention_lsjson
+  changed_when: false
+
+- name: Retention | [{{ svc.key }}] | Build sorted backup list
+  set_fact:
+    retention_sorted_backups: >-
+      {{
+        (retention_lsjson.stdout | default('[]') | from_json)
+        | selectattr('Name', 'match', '^' ~ svc.key ~ '_')
+        | sort(attribute='Name', reverse=True)
+        | list
+      }}
+
+- name: Retention | [{{ svc.key }}] | Calculate keep count
+  set_fact:
+    retention_keep_count: >-
+      {{
+        [
+          svc.value.retention.keep_last | int,
+          svc.value.retention.min_keep | default(1) | int
+        ] | max
+      }}
+
+- name: Retention | [{{ svc.key }}] | Build retention sets
+  set_fact:
+    retention_keep_backups: >-
+      {{
+        retention_sorted_backups[:(retention_keep_count | int)]
+        if (retention_sorted_backups | length) > 0
+        else []
+      }}
+
+    retention_delete_backups: >-
+      {{
+        retention_sorted_backups[(retention_keep_count | int):]
+        if (retention_sorted_backups | length) > 0
+        else []
+      }}
+
+    retention_archive_candidate: >-
+      {{
+        retention_sorted_backups[0]
+        if (retention_sorted_backups | length) > 0
+        else None
+      }}
+
+- name: Retention | [{{ svc.key }}] | Debug retention plan
+  debug:
+    msg:
+      total_backups: "{{ retention_sorted_backups | length | int }}"
+      keep: "{{ retention_keep_backups | map(attribute='Name') | list }}"
+      delete: "{{ retention_delete_backups | map(attribute='Name') | list }}"
+      archive_candidate: "{{ retention_archive_candidate.Name if retention_archive_candidate else 'none' }}"

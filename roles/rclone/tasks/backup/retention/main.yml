@@ -1,0 +1,11 @@
+- name: Retention | [{{ svc.key }}] | List remote backups
+  include_tasks: backup/retention/list_remote.yml
+
+- name: Retention | [{{ svc.key }}] | Archive promotion
+  include_tasks: backup/retention/archive.yml
+  when:
+    - svc.value.retention.archive is defined
+    - svc.value.retention.archive.enabled | default(false)
+
+- name: Retention | [{{ svc.key }}] | Prune old backups
+  include_tasks: backup/retention/prune.yml

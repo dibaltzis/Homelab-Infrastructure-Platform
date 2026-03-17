@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HomeLab Dashboard</title>
+  <link rel="stylesheet" href="/dashboard.css">
+</head>
+<body>
+
+<h1>HomeLab Dashboard</h1>
+
+<div id="status-bar">
+  <span id="hostname">{{ homelab_node.name }}</span>
+  •
+  <span id="uptime"></span>
+</div>
+
+<!-- TOP WIDGETS (FULL WIDTH) -->
+<div class="panel" style="max-width:1600px; margin:0 auto 12px auto;">
+  <div class="top-bar">
+
+    <!-- CLOCK TILE -->
+    <div class="top-tile clock-tile">
+      <div>
+        <div id="clock" class="clock"></div>
+        <div id="date" class="date"></div>
+      </div>
+    </div>
+
+    <!-- WEATHER TILE -->
+    <div class="top-tile weather-tile">
+      <iframe
+        src="{{ dashboard_windy_widget_link }}">
+      </iframe>
+    </div>
+
+    <!-- CALENDAR TILE -->
+    <div class="top-tile">
+      <div id="calendar"></div>
+    </div>
+
+  </div>
+</div>
+
+<div id="layout">
+
+  <!-- Workstation metrics -->
+  <div class="metrics-column">
+
+    <!-- FEDORA WORKSTATION -->
+    <div class="panel">
+      <h2>Fedora Workstation</h2>
+
+      <div class="metric-large">
+        <div class="metric-header"><span>CPU</span><span id="wsCpuValue">--%</span></div>
+        <canvas id="wsCpuGraph"></canvas>
+      </div>
+
+      <div class="metric-large">
+        <div class="metric-header"><span>RAM</span><span id="wsRamValue">--%</span></div>
+        <canvas id="wsRamGraph"></canvas>
+      </div>
+
+      <div class="metric-large">
+        <div class="metric-header"><span>NET UP ↑ </span><span id="wsNetUpValue">--</span></div>
+        <canvas id="wsNetUpGraph"></canvas>
+      </div>
+
+      <div class="metric-large">
+        <div class="metric-header"><span>NET DOWN ↓ </span><span id="wsNetDownValue">--</span></div>
+        <canvas id="wsNetDownGraph"></canvas>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Services -->
+<div id="services">
+  {% for name, svc in ingress_services.items() %}
+
+    {% if svc.dashboard is not defined or svc.dashboard.show | default(true) %}
+
+      {% set url = "https://" ~ svc.host_prefix ~ "." ~ ingress_domain %}
+
+      <a href="{{ url }}" target="_blank" class="service-card">
+
+        {% if svc.dashboard is defined and svc.dashboard.icon is defined %}
+          <img class="service-icon-large" src="{{ svc.dashboard.icon }}" />
+        {% endif %}
+
+        <div class="service-name">{{ name }}</div>
+        <div class="service-url">{{ url }}</div>
+
+      </a>
+    {% endif %}
+
+  {% endfor %}
+</div>
+
+  <!-- Server metrics -->
+  <div class="metrics-column">
+    <div class="panel">
+      <h2>Server</h2>
+
+      <div class="metric-large">
+        <div class="metric-header"><span>CPU</span><span id="serverCpuValue">--%</span></div>
+        <canvas id="serverCpuGraph"></canvas>
+      </div>
+
+      <div class="metric-large">
+        <div class="metric-header"><span>RAM</span><span id="serverRamValue">--%</span></div>
+        <canvas id="serverRamGraph"></canvas>
+      </div>
+
+      <div class="metric-large">
+        <div class="metric-header"><span>NET UP ↑</span><span id="serverNetUpValue">--</span></div>
+        <canvas id="serverNetUpGraph"></canvas>
+      </div>
+
+      <div class="metric-large">
+        <div class="metric-header"><span>NET DOWN ↓</span><span id="serverNetDownValue">--</span></div>
+        <canvas id="serverNetDownGraph"></canvas>
+      </div>
+
+
+    </div>
+  </div>
+
+</div>
+<div class="collapsible" onclick="toggleInstructions()">
+  ▶ Certificate & Docker Setup Instructions (click to expand)
+</div>
+
+<div id="instructionsContent" class="content">
+  <div class="instructions">
+
+    <h2>Download HomeLab Certificate</h2>
+
+    <p>
+      <a href="{{ dashboard_system_cert_name }}" download class="download-link">
+        {{ dashboard_system_cert_name }}
+      </a>
+    </p>
+
+    <h2>Download Ingress Certificate</h2>
+
+    <p>
+      <a href="{{ dashboard_ingress_cert_name }}" download class="download-link">
+        {{ dashboard_ingress_cert_name }}
+      </a>
+    </p>
+
+    <h2>Install HomeLab & Ingress Certificate</h2>
+    <h3>Windows (PowerShell as Administrator)</h3>
+<pre>
+Import-Certificate -FilePath "$env:USERPROFILE\Downloads\{{ dashboard_system_cert_name }}" `
+  -CertStoreLocation Cert:\LocalMachine\Root
+
+Import-Certificate -FilePath "$env:USERPROFILE\Downloads\{{ dashboard_ingress_cert_name }}" `
+  -CertStoreLocation Cert:\LocalMachine\Root
+</pre>
+
+    <h3>Fedora / RHEL</h3>
+<pre>
+sudo cp {{ dashboard_system_cert_name }} /etc/pki/ca-trust/source/anchors/
+sudo cp {{ dashboard_ingress_cert_name }} /etc/pki/ca-trust/source/anchors/
+sudo update-ca-trust
+</pre>
+
+    <h3>Debian / Ubuntu</h3>
+<pre>
+sudo cp {{ dashboard_system_cert_name }} /usr/local/share/ca-certificates/
+sudo cp {{ dashboard_ingress_cert_name }} /usr/local/share/ca-certificates/
+sudo update-ca-certificates
+</pre>
+
+    <h2>Docker Registry Trust</h2>
+
+    <p>
+      Docker does <strong>NOT</strong> use the system trust store for registries.
+      Install the ingress certificate into Docker’s registry trust directory.
+    </p>
+
+    <h3>Linux (Docker Engine)</h3>
+<pre>
+sudo mkdir -p /etc/docker/certs.d/{{ registry_host }}
+sudo cp {{ dashboard_ingress_cert_name }} \
+  /etc/docker/certs.d/{{ registry_host }}/ca.crt
+sudo systemctl restart docker
+</pre>
+
+    <h3>Windows (Docker Desktop)</h3>
+<pre>
+C:\ProgramData\docker\certs.d\{{ registry_host }}\ca.crt
+</pre>
+<p>Then restart Docker Desktop.</p>
+
+  </div>
+</div>
+
+<footer>
+  &copy; {{ ansible_date_time.year }} HomeLab — {{ homelab_node.ip }}
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="/dashboard.js"></script>
+
+</body>
+</html>

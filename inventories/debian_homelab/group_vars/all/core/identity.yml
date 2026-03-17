@@ -1,0 +1,17 @@
+homelab_domain: homelab.local
+homelab_use_fqdn: true
+
+homelab_node:
+  ip: "{{ ansible_default_ipv4.address }}"
+  hostname: "{{ ansible_hostname }}"
+  fqdn: "{{ ansible_hostname }}.{{ homelab_domain }}"
+  subnet: "{{ ansible_default_ipv4.network }}/{{ ansible_default_ipv4.prefix }}"
+  name: >-
+    {{
+      (ansible_hostname ~ '.' ~ homelab_domain)
+      if homelab_use_fqdn
+      else ansible_default_ipv4.address
+    }}
+
+
+

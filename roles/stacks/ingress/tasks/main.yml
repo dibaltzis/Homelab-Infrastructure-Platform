@@ -1,0 +1,60 @@
+- name: Configure ingress stack
+  include_tasks: "{{ role_path }}/../tasks/stack_setup.yml"
+  vars:
+    stack_name: "ingress"
+
+    stack_env_template: "ingress.env.j2"
+    stack_compose_template: "docker-compose.yml.j2"
+    stack_data_dirs:
+      - path: "{{ REVERSE_PROXY_CONF_PATH }}"
+      - path: "{{ REVERSE_PROXY_dashboard_PATH }}"
+      - path: "{{ REVERSE_PROXY_CERT_DIR }}"
+      - path: "{{ AUTHELIA_CONFIG_DIR }}"
+      - path: "{{ REVERSE_PROXY_SNIPPETS_PATH }}"
+    stack_templates:
+      - src: ingress/authelia-location.conf.j2
+        dest: "{{ REVERSE_PROXY_SNIPPETS_PATH }}/authelia.conf"
+      - src: ingress/ingress.conf.j2
+        dest: "{{ REVERSE_PROXY_CONF_PATH }}/ingress.conf"
+        notify: reload nginx
+
+      - src: authelia/configuration.yml.j2
+        dest: "{{ AUTHELIA_CONFIG_DIR }}/configuration.yml"
+        notify: restart authelia
+      - src: authelia/users.yml.j2
+        dest: "{{ AUTHELIA_CONFIG_DIR }}/users.yml"
+        notify: restart authelia
+
+      - src: dashboard/index.html.j2
+        dest: "{{ REVERSE_PROXY_dashboard_PATH }}/index.html"
+      - src: dashboard/dashboard.css.j2
+        dest: "{{ REVERSE_PROXY_dashboard_PATH }}/dashboard.css"
+      - src: dashboard/dashboard.js.j2
+        dest: "{{ REVERSE_PROXY_dashboard_PATH }}/dashboard.js"
+
+    stack_file_copies:
+      - src: "{{ user_cert_ca.local_machine.dir }}/{{ wildcard_certificate.name }}.crt"
+        dest: "{{ REVERSE_PROXY_CERT_DIR }}/{{ wildcard_certificate.name }}.crt"
+        remote_src: true
+      - src: "{{ user_cert_ca.local_machine.dir }}/{{ wildcard_certificate.name }}.key"
+        dest: "{{ REVERSE_PROXY_CERT_DIR }}/{{ wildcard_certificate.name }}.key"
+        remote_src: true
+      - src: "{{ user_cert_ca.local_machine.dir }}/{{ wildcard_certificate.name }}.crt"
+        dest: "{{ REVERSE_PROXY_dashboard_PATH }}/{{ wildcard_certificate.name }}.crt"
+        remote_src: true
+      - src: "{{ user_cert_ca.local_machine.dir }}/{{ user_cert_ca.local_machine.name }}.crt"
+        dest: "{{ REVERSE_PROXY_dashboard_PATH }}/{{ user_cert_ca.local_machine.name }}.crt"
+        remote_src: true
+
+- name: Install ingress compose systemd unit
+  template:
+    src: ingress/ingress-compose.service.j2
+    dest: /etc/systemd/system/ingress-compose.service
+    mode: "0644"
+  notify: reload systemd
+
+- name: Ensure ingress compose service is enabled
+  systemd:
+    name: ingress-compose.service
+    enabled: true
+    daemon_reload: true

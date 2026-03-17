@@ -1,0 +1,24 @@
+apiVersion: 1
+
+deleteDatasources:
+  - name: Prometheus
+  - name: Loki
+
+datasources:
+
+  - name: Prometheus
+    type: prometheus
+    uid: prometheus
+    access: proxy
+    url: "{{ GRAFANA_PROMETHEUS_DATASOURCE_URL }}"
+    isDefault: true
+    editable: false
+    jsonData:
+      httpMethod: POST
+
+  - name: Loki
+    type: loki
+    uid: loki
+    access: proxy
+    url: "{{ GRAFANA_LOKI_DATASOURCE_URL }}"
+    editable: false

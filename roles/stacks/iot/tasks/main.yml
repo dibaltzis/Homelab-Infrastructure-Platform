@@ -1,0 +1,16 @@
+- name: Configure iot stack
+  include_tasks: "{{ role_path }}/../tasks/stack_setup.yml"
+  vars:
+    stack_name: "iot"
+
+    stack_env_template: "iot.env.j2"
+    stack_compose_template: "docker-compose.yml.j2"
+
+    stack_data_dirs:
+      - path: "{{ HOME_ASSISTANT_CONFIG_PATH }}"
+        mode: "0644"
+        recurse: yes
+      - path: "{{ HYPERION_CONFIG_PATH }}"
+        owner: 1000
+        group: 1000
+        recurse: yes

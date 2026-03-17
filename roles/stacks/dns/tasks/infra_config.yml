@@ -1,0 +1,38 @@
+- name: "[stacks/dns/infra_config/adguardhome] Check if systemd stub listener is active"
+  shell: ss -lntup | grep ':53 ' | grep systemd-resolve || true
+  register: dns_stub_check
+  changed_when: false
+
+- name: "[stacks/dns/infra_config/adguardhome] Disable DNSStubListener"
+  lineinfile:
+    path: /etc/systemd/resolved.conf
+    regexp: '^#?DNSStubListener='
+    line: 'DNSStubListener=no'
+  when: dns_stub_check.stdout != ""
+
+- name: "[stacks/dns/infra_config/adguardhome] Stop systemd-resolved"
+  systemd:
+    name: systemd-resolved
+    state: stopped
+  when: dns_stub_check.stdout != ""
+
+- name: "[stacks/dns/infra_config/adguardhome] Remove resolv.conf symlink"
+  file:
+    path: /etc/resolv.conf
+    state: absent
+  when: dns_stub_check.stdout != ""
+
+- name: "[stacks/dns/infra_config/adguardhome] Create temporary resolv.conf"
+  copy:
+    dest: /etc/resolv.conf
+    content: |
+      nameserver 1.1.1.1
+      nameserver 9.9.9.9
+  when: dns_stub_check.stdout != ""
+
+- name: "[stacks/dns/infra_config/adguardhome] Start systemd-resolved"
+  systemd:
+    name: systemd-resolved
+    state: started
+  when: dns_stub_check.stdout != ""
+

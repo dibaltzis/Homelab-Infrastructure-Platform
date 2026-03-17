@@ -1,0 +1,26 @@
+endpoints:
+{% for name, svc in ingress_services.items() %}
+{% if svc.upstream is defined and svc.port is defined %}
+  - name: "{{ name }}"
+    group: "{{ svc.dashboard.category | default('services') if svc.dashboard is defined else 'services' }}"
+    interval: 60s
+    url: "http://{{ svc.upstream }}:{{ svc.port }}"
+    conditions:
+      - "[CONNECTED] == true"
+{% endif %}
+{% endfor %}
+
+{% for custom_endpoint in gatus_custom_endpoints | default([]) %}
+  - name: "{{ custom_endpoint.name }}"
+    group: "{{ custom_endpoint.group | default('custom') }}"
+    url: "{{ custom_endpoint.url }}"
+    interval: "{{ custom_endpoint.interval | default('60s') }}"
+{% if custom_endpoint.client is defined %}
+    client:
+{{ custom_endpoint.client | to_nice_yaml | indent(6, true) }}
+{% endif %}
+    conditions:
+{% for c in custom_endpoint.conditions | default(['[STATUS] == 200']) %}
+      - "{{ c }}"
+{% endfor %}
+{% endfor %}

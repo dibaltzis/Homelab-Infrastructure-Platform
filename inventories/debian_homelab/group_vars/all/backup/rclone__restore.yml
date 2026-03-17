@@ -1,0 +1,265 @@
+#services that need to backup/restore
+# postgres-main: true
+# jenkins:	true
+# gitea:	true
+# home-assistant: true
+# hyperion: true
+
+#var for mega.nz
+mega_nz_enabled: false
+b2_enabled: false
+force_restore_enabled: false
+
+rclone_restores:
+  services:
+    meganz_postgres:
+      enabled: "{{ mega_nz_enabled | bool }}"
+      force_restore: "{{ force_restore_enabled | bool }}"
+      source:
+        remote: mega_nz_account_01
+        path_dir: Dockers_backup
+        file: postgresql.zip.pcv
+        # Strip /data because the zip contains a top-level 'data/' directory
+      destination: 
+        path_dir: "{{ POSTGRESQL_DATA_PATH | dirname }}"
+      crypto:
+        enabled: true
+        tool: picocrypt
+        password: "{{ rclone_restore_password }}"
+      archive:
+        enabled: true
+        cleanup_archive: true
+        cleanup_encrypted: true
+      hooks:
+        container: "{{ postgres_container }}"
+        pre_commands: []
+        post_commands: []
+
+    meganz_gitea:
+      enabled: "{{ mega_nz_enabled | bool }}"
+      force_restore: "{{ force_restore_enabled | bool }}"
+      source:
+        remote: mega_nz_account_01
+        path_dir: Dockers_backup
+        file: gitea.zip.pcv
+      destination:
+        # Strip /data because the zip contains a top-level 'data/' directory
+        path_dir: "{{ GITEA_DATA_PATH | dirname }}"
+      crypto:
+        enabled: true
+        tool: picocrypt
+        password: "{{ rclone_restore_password }}"
+      archive:
+        enabled: true
+        cleanup_archive: true
+        cleanup_encrypted: true
+      hooks:
+        container: gitea
+        pre_commands: []
+        post_commands: []
+    
+    meganz_jenkins:
+      enabled: "{{ mega_nz_enabled | bool }}"
+      force_restore: "{{ force_restore_enabled | bool }}"
+      source:
+        remote: mega_nz_account_01
+        path_dir: Dockers_backup
+        file: jenkins.zip.pcv
+      destination:
+        # ZIP backups include the parent directory (jenkins_home/) it needs '| dirname'.
+        # TAR backups include only the contents. Adjust restore path accordingly.
+        path_dir: "{{ JENKINS_HOME_PATH | dirname }}"
+      crypto:
+        enabled: true
+        tool: picocrypt
+        password: "{{ rclone_restore_password }}"
+      archive:
+        enabled: true
+        cleanup_archive: true
+        cleanup_encrypted: true
+      hooks:
+        container: jenkins
+        pre_commands: []
+        post_commands: []
+
+    meganz_home-assistant:
+      enabled: "{{ mega_nz_enabled | bool }}"
+      force_restore: "{{ force_restore_enabled | bool }}"
+      source:
+        remote: mega_nz_account_01
+        path_dir: Dockers_backup
+        file: home-assistant.zip.pcv
+      destination:
+        # Strip /data because the zip contains a top-level 'config"/' directory
+        path_dir: "{{ HOME_ASSISTANT_CONFIG_PATH | dirname }}"
+      crypto:
+        enabled: true
+        tool: picocrypt
+        password: "{{ rclone_restore_password }}"
+      archive:
+        enabled: true
+        cleanup_archive: true
+        cleanup_encrypted: true
+      hooks:
+        container: home-assistant
+        pre_commands: []
+        post_commands: []
+
+    meganz_hyperion:
+      enabled: "{{ mega_nz_enabled | bool }}"
+      force_restore: "{{ force_restore_enabled | bool }}"
+      source:
+        remote: mega_nz_account_01
+        path_dir: Dockers_backup
+        file: hyperionNG.zip.pcv
+      destination:
+        # Strip /data because the zip contains a top-level 'config"/' directory
+        path_dir: "{{ HYPERION_CONFIG_PATH | dirname }}"
+      crypto:
+        enabled: true
+        tool: picocrypt
+        password: "{{ rclone_restore_password }}"
+      archive:
+        enabled: true
+        cleanup_archive: true
+        cleanup_encrypted: true
+      hooks:
+        container: hyperion
+        pre_commands: []
+        post_commands: []
+#backblaze b2 
+    postgres:
+      enabled: "{{ b2_enabled | bool }}"
+      force_restore: "{{ force_restore_enabled | bool }}"
+      source:
+        remote: b2_account
+        bucket: Homelab-dibal
+        path_dir: "{{ remote_default_archive_folder_destination }}/postgres/2026"
+        #latest or oldest (require the artifact prefix) or specif filename
+        file: latest 
+        artifact_prefix: postgres
+      destination:
+        # ZIP backups include the parent directory it needs '| dirname'.
+        # TAR backups include only the contents. Adjust restore path accordingly.
+        path_dir: "{{ POSTGRESQL_DATA_PATH }}"
+      crypto:
+        enabled: true
+        tool: gpg
+        private_key: "{{ gpg_private_key }}"
+      archive:
+        enabled: true
+        cleanup_archive: true
+        cleanup_encrypted: true
+      hooks:
+        container: "{{ postgres_container }}"
+        pre_commands: []
+        post_commands: []
+
+    gitea:
+      enabled: "{{ b2_enabled | bool }}"
+      force_restore: "{{ force_restore_enabled | bool }}"
+      source:
+        remote: b2_account
+        bucket: Homelab-dibal
+        path_dir: "{{ remote_default_archive_folder_destination }}/gitea/2026"
+        #latest or oldest or specif filename
+        file: latest 
+        artifact_prefix: gitea
+      destination:
+        # ZIP backups include the parent directory it needs '| dirname'.
+        # TAR backups include only the contents. Adjust restore path accordingly.
+        path_dir: "{{ GITEA_DATA_PATH }}"
+      crypto:
+        enabled: true
+        tool: gpg
+        private_key: "{{ gpg_private_key }}"
+      archive:
+        enabled: true
+        cleanup_archive: true
+        cleanup_encrypted: true
+      hooks:
+        container: gitea
+        pre_commands: []
+        post_commands: []
+
+    jenkins:
+      enabled: "{{ b2_enabled | bool }}"
+      force_restore: "{{ force_restore_enabled | bool }}"
+      source:
+        remote: b2_account
+        bucket: Homelab-dibal
+        path_dir: "{{ remote_default_archive_folder_destination }}/jenkins/2026"
+        #latest or oldest or specif filename
+        file: latest
+        artifact_prefix: jenkins
+      destination:
+        # ZIP backups include the parent directory it needs '| dirname'.
+        # TAR backups include only the contents. Adjust restore path accordingly.
+        path_dir: "{{ JENKINS_HOME_PATH }}"
+      crypto:
+        enabled: true
+        tool: gpg
+        private_key: "{{ gpg_private_key }}"
+      archive:
+        enabled: true
+        cleanup_archive: true
+        cleanup_encrypted: true
+      hooks:
+        container: jenkins
+        pre_commands: []
+        post_commands: []
+
+    home-assistant:
+      enabled: "{{ b2_enabled | bool }}"
+      force_restore: "{{ force_restore_enabled | bool }}"
+      source:
+        remote: b2_account
+        bucket: Homelab-dibal
+        path_dir: "{{ remote_default_archive_folder_destination }}/home-assistant/2026"
+        #latest or oldest or specif filename
+        file: latest
+        artifact_prefix: home-assistant
+      destination:
+        # ZIP backups include the parent directory it needs '| dirname'.
+        # TAR backups include only the contents. Adjust restore path accordingly.
+        path_dir: "{{ HOME_ASSISTANT_CONFIG_PATH }}"
+      crypto:
+        enabled: true
+        tool: gpg
+        private_key: "{{ gpg_private_key }}"
+      archive:
+        enabled: true
+        cleanup_archive: true
+        cleanup_encrypted: true
+      hooks:
+        container: home-assistant
+        pre_commands: []
+        post_commands: []
+
+    hyperion:
+      enabled: true #"{{ b2_enabled | bool }}"
+      force_restore: "{{ force_restore_enabled | bool }}"
+      source:
+        remote: b2_account
+        bucket: Homelab-dibal
+        path_dir: "{{ remote_default_archive_folder_destination }}/hyperion/2026"
+        #latest or oldest or specif filename
+        file: latest
+        artifact_prefix: hyperion
+      destination:
+        # ZIP backups include the parent directory it needs '| dirname'.
+        # TAR backups include only the contents. Adjust restore path accordingly.
+        path_dir: "{{ HYPERION_CONFIG_PATH }}"
+      crypto:
+        enabled: true
+        tool: gpg
+        private_key: "{{ gpg_private_key }}"
+      archive:
+        enabled: true
+        cleanup_archive: true
+        cleanup_encrypted: true
+      hooks:
+        container: hyperion
+        pre_commands: []
+        post_commands: []
+

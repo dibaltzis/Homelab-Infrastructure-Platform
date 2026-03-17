@@ -1,0 +1,23 @@
+############################################################
+# OS prerequisites for certificate handling
+############################################################
+- name: Ensure ca-certificates package is installed (Debian)
+  apt:
+    name: ca-certificates
+    state: present
+    update_cache: true
+  when: ansible_os_family == "Debian"
+
+- name: Ensure ca-certificates package is installed (RedHat)
+  yum:
+    name: ca-certificates
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: Ensure certificate working directory exists
+  file:
+    path: "{{ user_cert_ca.local_machine.dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"

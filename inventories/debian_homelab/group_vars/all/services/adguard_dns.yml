@@ -1,0 +1,86 @@
+adguard_admin_user: "{{ secrets['services/dns/adguard_admin_user'] }}"
+adguard_admin_password_hash: "{{ secrets['services/dns/adguard_admin_password_hash'] }}"
+
+adguard_upstreams:
+  - https://dns.quad9.net/dns-query
+  - https://dns10.quad9.net/dns-query
+  - https://dns.cloudflare.com/dns-query
+
+adguard_upstream_mode: load_balance
+
+adguard_cache_enabled: true
+adguard_cache_size: 67108864
+adguard_cache_optimistic: true
+adguard_cache_optimistic_answer_ttl: 30s
+
+adguard_bootstrap_dns:
+  - 9.9.9.9
+  - 149.112.112.112
+  - 2620:fe::fe
+  - 2620:fe::fe:9
+
+adguard_filters:
+  - enabled: true
+    url: https://adguardteam.github.io/HostlistsRegistry/assets/filter_1.txt
+    name: AdGuard DNS filter
+    id: 1
+  - enabled: true
+    url: https://adguardteam.github.io/HostlistsRegistry/assets/filter_48.txt
+    name: HaGeZi's Pro Blocklist
+    id: 1704535904
+  - enabled: true
+    url: https://adguardteam.github.io/HostlistsRegistry/assets/filter_30.txt
+    name: Phishing URL Blocklist (PhishTank and OpenPhish)
+    id: 1704535905
+  - enabled: true
+    url: https://adguardteam.github.io/HostlistsRegistry/assets/filter_12.txt
+    name: Dandelion Sprout's Anti-Malware List
+    id: 1704535907
+
+adguard_dhcp_enabled: false
+
+adguard_rewrites:
+  - domain: server.pi
+    answer: 192.168.31.229
+    enabled: true
+  - domain: li.ght
+    answer: 192.168.31.200
+    enabled: true
+  - domain: tv.wled
+    answer: 192.168.31.97
+    enabled: true
+  - domain: desk.wled
+    answer: 192.168.31.98
+    enabled: true
+
+adguard_statistics:
+  ignored:
+    - google.com
+    - api.miwifi.com
+  interval: 2160h
+  enabled: true
+
+adguard_user_rules:
+  # Infrastructure
+  - "@@||tailscale.com^"
+  - "@@||log.tailscale.com^"
+  - "@@||controlplane.tailscale.com^"
+
+  # Container registries
+  - "@@||docker.io^"
+  - "@@||registry-1.docker.io^"
+  - "@@||ghcr.io^"
+  - "@@||quay.io^"
+
+  # Dev infrastructure
+  - "@@||github.com^"
+  - "@@||githubusercontent.com^"
+
+  # Certificate infrastructure
+  - "@@||letsencrypt.org^"
+  - "@@||acme-v02.api.letsencrypt.org^"
+  - "@@||pki.goog^"
+
+  # Package mirrors
+  - "@@||deb.debian.org^"
+  - "@@||security.debian.org^"

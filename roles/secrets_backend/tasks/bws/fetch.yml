@@ -1,0 +1,31 @@
+- name: Fetch all secrets from Bitwarden project
+  command: >
+    {{ bws_install_path }} secret list
+    --access-token {{ BWS_ACCESS_TOKEN }}
+    {{ bws_project_id }}
+    --output json
+  register: _bws_raw
+  no_log: true
+  delegate_to: localhost
+  run_once: true
+  changed_when: false
+
+- name: Build secrets dict from prefix
+  set_fact:
+    secrets: >-
+      {{
+        dict(
+          (_filtered | map(attribute='key') | map('regex_replace', '^' + secrets_prefix, ''))
+          | zip(_filtered | map(attribute='value'))
+        )
+      }}
+  vars:
+    _all: "{{ _bws_raw.stdout | from_json }}"
+    _filtered: "{{ _all | selectattr('key', 'match', '^' + secrets_prefix) | list }}"
+  no_log: true
+  run_once: true
+
+#- name: Secrets summary
+#  debug:
+#    msg: "Secrets backend: {{ secrets | length }} secrets loaded from prefix '{{ secrets_prefix }}'"
+#  run_once: true

@@ -1,0 +1,34 @@
+---
+- name: Configure debian server
+  hosts: debian_homelab
+  become: true
+  gather_facts: true
+  pre_tasks:
+      - name: Find all group_vars files recursively
+        find:
+          paths: "{{ inventory_dir }}/group_vars/all"
+          patterns: "*.yml"
+          recurse: yes
+        register: _group_vars_files
+        delegate_to: localhost
+        run_once: true
+
+      - name: Load structured group vars
+        include_vars: "{{ item.path }}"
+        loop: "{{ _group_vars_files.files }}"
+        loop_control:
+          label: "{{ item.path | basename }}"
+        run_once: true
+
+  roles:
+    - { role: secrets_backend, tags: ['always', 'secrets'] }
+    - { role: base_system,  tags: ['base_system'] }
+    - { role: user,         tags: ['user'] }
+    - { role: git,          tags: ['git'] }
+    - { role: packages,     tags: ['packages'] }
+    - { role: certificates, tags: ['certificates'] }
+    - { role: samba,        tags: ['samba'] }
+    - { role: stacks,       tags: ['stacks', 'containers'] }
+    - { role: rclone,       tags: ['rclone'] }
+    - { role: containers,   tags: ['containers'] }
+

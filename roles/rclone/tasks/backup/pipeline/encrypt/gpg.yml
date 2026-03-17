@@ -1,0 +1,50 @@
+# --------------------------------
+# Import GPG public key for this service
+# --------------------------------
+- name: Backup | [{{ svc.key }}] | Import GPG public key for service
+  command: gpg --batch --import
+  args:
+    stdin: "{{ svc.value.crypto.recipient }}"
+  register: gpg_import_result
+  changed_when: "'imported' in gpg_import_result.stderr"
+
+# --------------------------------
+# Discover recipient fingerprint from keyring
+# --------------------------------
+- name: Backup | [{{ svc.key }}] | Get GPG fingerprints
+  command: gpg --with-colons --fingerprint
+  register: gpg_fpr
+  changed_when: false
+
+- name: Backup | [{{ svc.key }}] | Extract fingerprint of most recently imported key
+  set_fact:
+    gpg_backup_recipient: >-
+      {{
+        (
+          gpg_fpr.stdout_lines
+          | select('match', '^fpr:')
+          | list
+          | last
+        ).split(':')[9]
+      }}
+
+# --------------------------------
+# Encrypt archive
+# --------------------------------
+- name: Backup | [{{ svc.key }}] | Encrypt archive with GPG
+  command: >
+    gpg --batch --yes --trust-model always
+    --output {{ rclone_tmp_archives }}/{{ encrypted_archive_filename }}
+    --encrypt
+    --recipient "{{ gpg_backup_recipient }}"
+    {{ rclone_tmp_archives }}/{{ archive_filename }}
+  register: gpg_encrypt_result
+  changed_when: gpg_encrypt_result.rc == 0
+
+# --------------------------------
+# Remove plain archive
+# --------------------------------
+- name: Backup | [{{ svc.key }}] | Remove plain archive after encryption
+  file:
+    path: "{{ rclone_tmp_archives }}/{{ archive_filename }}"
+    state: absent

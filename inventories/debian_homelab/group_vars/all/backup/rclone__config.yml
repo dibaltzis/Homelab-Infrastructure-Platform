@@ -1,0 +1,52 @@
+############################
+# Rclone
+############################
+
+rclone_config_dir: /etc/rclone
+rclone_config_file: "{{ rclone_config_dir }}/rclone.conf"
+rclone_container_config_dir: /config/rclone
+rclone_container_config_file: "{{ rclone_container_config_dir }}/rclone.conf"
+rclone_container_image: rclone/rclone:latest
+rclone_tmp_archives: /tmp/rclone_archives
+
+############################
+# Enable/Disable 
+############################
+rclone_enable_backup: false
+rclone_enable_restore: false
+
+#############################
+# Default remote paths for buckets
+#############################
+remote_default_folder_destination: dockers-state 
+remote_default_archive_folder_destination: archives
+
+############################
+# Rclone remotes
+############################
+
+rclone_remotes:
+  mega_nz_account_01:
+    type: mega
+    user: "{{ secrets['rclone/remotes/mega_nz_account_01/user'] }}"
+    pass: "{{ secrets['rclone/remotes/mega_nz_account_01/pass'] }}"
+
+  b2_main_account:
+    type: b2
+    account: "{{ secrets['rclone/remotes/b2_main_account/account'] }}"
+    key: "{{ secrets['rclone/remotes/b2_main_account/key'] }}"
+
+  b2_account:
+    type: b2
+    account: "{{ secrets['rclone/remotes/b2_account/account'] }}"
+    key: "{{ secrets['rclone/remotes/b2_account/key'] }}"
+
+
+############################
+# Restore / crypto material
+############################
+
+rclone_restore_password: "{{ secrets['rclone/restore/password'] }}"
+
+gpg_private_key: "{{ secrets['rclone/restore/gpg_private_key'] }}"
+gpg_public_key: "{{ secrets['rclone/restore/gpg_public_key'] }}"

@@ -1,0 +1,5 @@
+vault_pass.txt
+.env
+bws_credentials.yml
+__pycache__
+reports/

@@ -1,0 +1,51 @@
+- name: Detect controller architecture for bws
+  set_fact:
+    _bws_arch: "{{ 
+      'x86_64-unknown-linux-gnu' if lookup('pipe', 'uname -m') == 'x86_64'
+      else 'aarch64-unknown-linux-gnu' if lookup('pipe', 'uname -m') in ['aarch64', 'arm64']
+      else 'unsupported'
+    }}"
+  delegate_to: localhost
+  run_once: true
+
+- name: Fail if architecture is unsupported
+  fail:
+    msg: "Unsupported architecture for bws"
+  when: _bws_arch == "unsupported"
+  delegate_to: localhost
+  run_once: true
+
+- name: Create temp workspace
+  tempfile:
+    state: directory
+  register: _bws_tmp
+  delegate_to: localhost
+  run_once: true
+
+- name: Download bws archive
+  get_url:
+    url: "https://github.com/bitwarden/sdk-sm/releases/download/bws-v{{ bws_version }}/bws-{{ _bws_arch }}-{{ bws_version }}.zip"
+    dest: "{{ _bws_tmp.path }}/bws.zip"
+    mode: '0644'
+  delegate_to: localhost
+  run_once: true
+
+- name: Unarchive bws
+  unarchive:
+    src: "{{ _bws_tmp.path }}/bws.zip"
+    dest: "{{ _bws_tmp.path }}"
+    remote_src: true
+  delegate_to: localhost
+  run_once: true
+
+- name: Install bws binary
+  command: >
+    install -m 0755 {{ _bws_tmp.path }}/bws {{ bws_install_path }}
+  delegate_to: localhost
+  run_once: true
+
+- name: Verify bws installation
+  command: "{{ bws_install_path }} --version"
+  changed_when: false
+  delegate_to: localhost
+  run_once: true

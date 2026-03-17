@@ -1,0 +1,21 @@
+- name: Restore | [{{ svc.key }}] | Decrypt archive with Picocrypt
+  command:
+    argv:
+      - /usr/local/bin/picocrypt
+      - -p
+      - "{{ svc.value.crypto.password }}"
+      - "{{ restore_encrypted_path }}"
+  no_log: true
+
+- name: Restore | [{{ svc.key }}] | Create decrypt marker
+  file:
+    path: "{{ restore_decrypt_marker }}"
+    state: touch
+
+- name: Restore | [{{ svc.key }}] | Update decrypt marker state
+  set_fact:
+    restore_markers: "{{ restore_markers | combine({'decrypt': true}) }}"
+
+- name: Restore | [{{ svc.key }}] | Decrypt result
+  debug:
+    msg: "[decrypt-picocrypt] service={{ svc.key }} output={{ restore_decrypted_path }}"

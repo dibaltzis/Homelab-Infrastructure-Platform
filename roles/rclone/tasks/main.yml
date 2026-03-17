@@ -1,0 +1,52 @@
+- name: Rclone workflows
+  when:
+    - rclone_enable_backup or rclone_enable_restore
+  block:
+
+    - name: Bootstrap rclone
+      import_tasks: bootstrap.yml
+
+    - name: Detect enabled rclone services
+      set_fact:
+        rclone_restore_has_enabled: >-
+          {{
+            (rclone_restores.services | default({}))
+            | dict2items
+            | selectattr('value.enabled', 'equalto', true)
+            | list
+            | length > 0
+          }}
+        rclone_backup_has_enabled: >-
+          {{
+            (rclone_backups.services | default({}))
+            | dict2items
+            | selectattr('value.enabled', 'equalto', true)
+            | list
+            | length > 0
+          }}
+
+    - name: Run restore workflow
+      import_tasks: restore/main.yml
+      when:
+        - rclone_enable_restore
+        - rclone_restore_has_enabled
+
+    - name: Run backup workflow
+      import_tasks: backup/main.yml
+      when:
+        - rclone_enable_backup
+        - rclone_backup_has_enabled 
+
+    - name: Rclone | Skip restore (no enabled services)
+      debug:
+        msg: "[rclone] restore skipped — no enabled services"
+      when:
+        - rclone_enable_restore
+        - not rclone_restore_has_enabled
+
+    - name: Rclone | Skip backup (no enabled services)
+      debug:
+        msg: "[rclone] backup skipped — no enabled services"
+      when:
+        - rclone_enable_backup
+        - not rclone_backup_has_enabled

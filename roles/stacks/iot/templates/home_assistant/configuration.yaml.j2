@@ -1,0 +1,29 @@
+# Loads default set of integrations. Do not remove.
+default_config:
+
+frontend:
+  themes: !include_dir_merge_named themes
+
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+
+http:
+  use_x_forwarded_for: true
+  trusted_proxies:
+{% for cidr in HA_TRUSTED_PROXIES %}
+    - {{ cidr }}
+{% endfor %}
+
+homeassistant:
+  external_url: "{{ HA_EXTERNAL_URL }}"
+  internal_url: "{{ HA_INTERNAL_URL }}"
+
+recorder:
+  db_url: "postgresql://{{ HOME_ASSISTANT_POSTGRES_DB.USER }}:{{ HOME_ASSISTANT_POSTGRES_DB.PASSWORD }}@{{ HOME_ASSISTANT_POSTGRES_DB.HOST }}:{{ HOME_ASSISTANT_POSTGRES_DB.PORT }}/{{ HOME_ASSISTANT_POSTGRES_DB.NAME }}"
+  exclude:
+    entities:
+      - sensor.date
+      - media_player.tvbox_2
+    event_types:
+      - call_service

@@ -1,0 +1,16 @@
+- name: Restore | [{{ svc.key }}] | Force restore (reset state)
+  debug:
+    msg: "[restore-force] service={{ svc.key }} resetting {{ restore_extract_dir }}"
+
+- name: Wipe restore directory
+  file:
+    path: "{{ restore_extract_dir }}"
+    state: absent
+
+- name: Restore | [{{ svc.key }}] | Recreate restore directory
+  file:
+    path: "{{ restore_extract_dir }}"
+    state: directory
+    owner: "{{ primary_user | default('root') }}"
+    group: "{{ primary_user | default('root') }}"
+    mode: "0755"

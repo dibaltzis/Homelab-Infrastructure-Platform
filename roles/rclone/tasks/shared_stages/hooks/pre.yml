@@ -1,0 +1,26 @@
+- name: Pre-backup | [{{ svc.key }}] | Check container running state
+  command: docker inspect -f '{{ "{{.State.Running}}" }}' {{ svc.value.hooks.container }}
+  register: container_state
+  changed_when: false
+  failed_when: false
+  when:
+    - svc.value.hooks is defined
+    - svc.value.hooks.container is defined
+
+- name: Pre-backup | [{{ svc.key }}] | Run pre-backup commands
+  command: "{{ hook_cmd }}"
+  loop: "{{ svc.value.hooks.pre_commands | default([]) }}"
+  loop_control:
+    loop_var: hook_cmd
+  when:
+    - svc.value.hooks is defined
+    - svc.value.hooks.pre_commands is defined
+    - container_state.stdout == "true"
+
+- name: Pre-backup | [{{ svc.key }}] | Stop container before backup
+  command: docker stop {{ svc.value.hooks.container }}
+  ignore_errors: true
+  when:
+    - svc.value.hooks is defined
+    - svc.value.hooks.container is defined
+    - container_state.stdout == "true"

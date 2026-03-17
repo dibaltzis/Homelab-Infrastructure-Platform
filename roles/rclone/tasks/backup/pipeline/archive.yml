@@ -1,0 +1,38 @@
+- name: Backup | [{{ svc.key }}] | Create archive directory
+  file:
+    path: "{{ rclone_tmp_archives }}"
+    state: directory
+    mode: "0700"
+
+- name: Backup | [{{ svc.key }}] | Verify source path exists
+  stat:
+    path: "{{ svc.value.source.path }}"
+  register: source_path
+
+- name: Backup | [{{ svc.key }}] | Fail early if source path missing
+  fail:
+    msg: "Source path {{ svc.value.source.path }} does not exist for {{ svc.key }}"
+  when: not source_path.stat.exists
+
+- name: Backup | [{{ svc.key }}] | Archive service data with zip
+  archive:
+    path: "{{ svc.value.source.path }}"
+    dest: "{{ rclone_tmp_archives }}/{{ archive_filename }}"
+    format: zip
+    exclude_path: >-
+      {{
+        (svc.value.source.exclude | default([]))
+        | map('trim', '/')
+        | map('regex_replace', '^', svc.value.source.path + '/')
+        | list
+      }}
+  when: svc.value.archive.tool == 'zip'
+  
+- name: Backup | [{{ svc.key }}] | Archive service data with tar
+  command: >
+    tar -czf "{{ rclone_tmp_archives }}/{{ archive_filename }}"
+    {% for ex in svc.value.source.exclude | default([]) %}
+    --exclude='*/{{ ex | trim("/") }}'
+    {% endfor %}
+    -C "{{ svc.value.source.path }}" .
+  when: svc.value.archive.tool == 'tar'

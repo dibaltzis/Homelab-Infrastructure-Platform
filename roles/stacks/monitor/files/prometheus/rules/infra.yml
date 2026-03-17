@@ -1,0 +1,34 @@
+groups:
+- name: infra
+  rules:
+
+  - alert: HostHighCPU
+    expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[2m])) * 100) > 85
+    for: 3m
+    labels:
+      severity: warning
+      category: infra
+    annotations:
+      summary: "High CPU usage on {{ $labels.instance }}"
+      description: "CPU usage has been above 85% for more than 3 minutes."
+
+  - alert: HostHighMemory
+    expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100 > 90
+    for: 3m
+    labels:
+      severity: warning
+      category: infra
+    annotations:
+      summary: "High memory usage on {{ $labels.instance }}"
+      description: "Memory usage above 90%."
+
+  - alert: HostDiskSpaceLow
+    expr: node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs"}
+          / node_filesystem_size_bytes{fstype!~"tmpfs|overlay|squashfs"} * 100 < 10
+    for: 5m
+    labels:
+      severity: critical
+      category: infra
+    annotations:
+      summary: "Low disk space on {{ $labels.instance }}"
+      description: "Filesystem {{ $labels.mountpoint }} has less than 10% free space."

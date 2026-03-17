@@ -1,0 +1,18 @@
+############################
+# Samba users
+############################
+samba_users:
+  - name: "{{ secrets['services/samba/name'] }}" 
+    password: "{{ secrets['services/samba/password'] }}"
+
+############################
+# Samba shares
+############################
+samba_shares:
+  - name: homelab
+    path: /srv/samba/homelab
+    browsable: true
+    read_only: false
+    guest_ok: false
+    valid_users:
+      - "{{ secrets['services/samba/name'] }}"

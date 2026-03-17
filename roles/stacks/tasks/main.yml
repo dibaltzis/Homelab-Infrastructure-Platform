@@ -1,0 +1,35 @@
+- name: Ensure variables for stacks exist
+  include_tasks: ensure_stacks_vars.yml
+
+- name: Create/Ensure shared docker networks exist
+  command: >
+    docker network create
+    --driver bridge
+    --subnet {{ item.value.subnet }}
+    --gateway {{
+      item.value.subnet
+      | ansible.utils.ipaddr('1')
+      | ansible.utils.ipaddr('address')
+    }}
+    {{ item.value.name }}
+  register: network_create
+  failed_when: false
+  changed_when: "'already exists' not in network_create.stderr"
+  loop: "{{ shared_networks | dict2items }}"
+  loop_control:
+    label: "{{ item.value.name }}"
+
+- name: Fail if requested stack does not exist
+  fail:
+    msg: "Stack '{{ item }}' is not in containers.enabled"
+  when: item not in containers.enabled
+  loop: "{{ containers_active }}"
+
+- name: Bootstrap enabled container stacks
+  include_role:
+    name: "stacks/{{ item }}"
+  vars:
+    stack_name: "{{ item }}"
+  loop: "{{ containers_active }}"
+  loop_control:
+    label: "{{ item }}"

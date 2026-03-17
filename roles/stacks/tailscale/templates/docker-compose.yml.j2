@@ -1,0 +1,19 @@
+services:
+  tailscale:
+    image: "{{ container_images.tailscale.tailscale.repo }}:{{ container_images.tailscale.tailscale.tag }}"
+    container_name: tailscale
+    hostname: ${TAILSCALE_HOSTNAME}
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    environment:
+      - TS_LOG_TARGET=stderr
+      - TS_DEBUG_DISABLE_NETLINK_MONITOR=1
+      - TS_AUTHKEY=${TAILSCALE_AUTHKEY}
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_EXTRA_ARGS=--advertise-exit-node --advertise-routes=${TAILSCALE_SUBNET} --accept-dns=false
+    volumes:
+      - ${TAILSCALE_STATE_DIR}:/var/lib/tailscale
+      - /dev/net/tun:/dev/net/tun
+    restart: unless-stopped

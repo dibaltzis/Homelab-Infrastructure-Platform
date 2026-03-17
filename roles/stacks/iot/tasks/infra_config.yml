@@ -1,0 +1,20 @@
+- name: "[stacks/iot/infra_config/Home-assistant] Render Home Assistant configuration"
+  template:
+    src: "{{ role_path }}/../stacks/iot/templates/home_assistant/configuration.yaml.j2"
+    dest: "{{ HOME_ASSISTANT_CONFIG_PATH }}/configuration.yaml"
+    owner: "{{ primary_user }}"
+    group: "{{ primary_user }}"
+    mode: "0644"
+
+- name: "[stacks/iot/infra_config/Home-assistant] Ensure Home Assistant include files exist"
+  copy:
+    dest: "{{ HOME_ASSISTANT_CONFIG_PATH }}/{{ item }}"
+    content: ""
+    force: false
+    owner: "{{ primary_user }}"
+    group: "{{ primary_user }}"
+    mode: "0644"
+  loop:
+    - automations.yaml
+    - scripts.yaml
+    - scenes.yaml

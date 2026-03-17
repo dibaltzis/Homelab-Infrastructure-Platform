@@ -1,0 +1,178 @@
+networks:
+  shared-ingress-network:
+    external: true
+
+  shared-monitor-network:
+    external: true
+
+  shared-database-network:
+    external: true
+
+services:
+  gatus:
+    image: "{{ container_images.monitor.gatus.repo }}:{{ container_images.monitor.gatus.tag }}"
+    container_name: gatus
+    restart: unless-stopped
+    volumes:
+      - ${GATUS_PATH}/config.yml:/config/config.yaml
+    environment:
+      - GATUS_WEB_ROOT=/gatus
+    networks:
+      - shared-ingress-network
+
+  openspeedtest:
+    image: "{{ container_images.monitor.openspeedtest.repo }}:{{ container_images.monitor.openspeedtest.tag }}"
+    container_name: openspeedtest
+    restart: unless-stopped
+    networks:
+      - shared-ingress-network
+
+  iperf3_server:
+    image: "{{ container_images.monitor.iperf3_server.repo }}:{{ container_images.monitor.iperf3_server.tag }}"
+    container_name: iperf3_server
+    restart: unless-stopped
+    networks:
+      - shared-monitor-network
+    ports:
+      - "${IPERF3_PORT}:5201/udp"
+      - "${IPERF3_PORT}:5201/tcp"
+
+  prometheus:
+    image: "{{ container_images.monitor.prometheus.repo }}:{{ container_images.monitor.prometheus.tag }}"
+    container_name: prometheus
+    restart: unless-stopped
+    networks:
+      - shared-ingress-network
+      - shared-monitor-network
+    volumes:
+      - ${PROMETHEUS_PATH}:/prometheus
+      - ${PROMETHEUS_PATH}/rules:/etc/prometheus/rules
+      - ${PROMETHEUS_PATH}/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=30d"
+    environment:
+      - TZ=${TIME_ZONE}
+
+  node-exporter:
+    image: "{{ container_images.monitor.node_exporter.repo }}:{{ container_images.monitor.node_exporter.tag }}"
+    container_name: node_exporter
+    hostname: homelab_exporter
+    restart: unless-stopped
+    networks:
+      - shared-monitor-network
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+    command:
+      - "--path.rootfs=/host"
+      - "--collector.processes"
+
+  grafana:
+    image: "{{ container_images.monitor.grafana.repo }}:{{ container_images.monitor.grafana.tag }}"
+    container_name: grafana
+    restart: unless-stopped
+    networks:
+      - shared-ingress-network
+      - shared-monitor-network
+      - shared-database-network
+    volumes:
+      - ${GRAFANA_DATA_PATH}:/var/lib/grafana
+      - ${GRAFANA_PROVISIONING_PATH}:/etc/grafana/provisioning
+      - ${GRAFANA_DASHBOARDS_PATH}:/var/lib/grafana/dashboards
+      - ${GRAFANA_CONFIG_PATH}/grafana.ini:/etc/grafana/grafana.ini:ro
+    environment:
+      - TZ=${TIME_ZONE}
+
+  loki:
+    image: "{{ container_images.monitor.loki.repo }}:{{ container_images.monitor.loki.tag }}"
+    container_name: loki
+    restart: unless-stopped
+    networks:
+      - shared-monitor-network
+    volumes:
+      - ${LOKI_PATH}:/loki
+      - ${LOKI_PATH}/loki-config.yml:/etc/loki/local-config.yaml
+      - "{{ LOKI_PATH }}/rules:/loki/rules"
+    command: -config.file=/etc/loki/local-config.yaml
+
+  promtail:
+    image: "{{ container_images.monitor.promtail.repo }}:{{ container_images.monitor.promtail.tag }}"
+    container_name: promtail
+    restart: unless-stopped
+    networks:
+      - shared-monitor-network
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${PROMTAIL_PATH}:/etc/promtail
+    command: -config.file=/etc/promtail/promtail.yml
+
+  cadvisor:
+    image: "{{ container_images.monitor.cadvisor.repo }}:{{ container_images.monitor.cadvisor.tag }}"
+    container_name: cadvisor
+    restart: unless-stopped
+    networks:
+      - shared-monitor-network
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
+
+  alertmanager:
+    image: "{{ container_images.monitor.alertmanager.repo }}:{{ container_images.monitor.alertmanager.tag }}"
+    container_name: alertmanager
+    restart: unless-stopped
+    networks:
+      - shared-ingress-network
+      - shared-monitor-network
+    volumes:
+      - ${ALERTMANAGER_PATH}/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ${ALERTMANAGER_PATH}/templates:/etc/alertmanager/templates:ro
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+      - "--web.external-url={{ ALERTMANAGER_PUBLIC_URL }}"
+    environment:
+      - TZ=${TIME_ZONE}
+
+  dashboard_metrics_agent:
+    image: "{{ container_images.monitor.dashboard_metrics_agent.repo }}:{{ container_images.monitor.dashboard_metrics_agent.tag }}"
+    container_name: dashboard_metrics_agent
+    restart: unless-stopped
+    networks:
+      - shared-monitor-network
+      - shared-ingress-network
+    environment:
+      - EXPORTER_URL=http://node_exporter:9100/metrics
+      - PRIMARY_IFACE=enp1s0
+      - DISK_MOUNT=/
+      - INTERVAL=1
+      - WINDOW=30
+      - CORS_ORIGINS=https://dashboard.{{ ingress_domain }}
+
+  adguard_exporter:
+    image: "{{ container_images.monitor.adguard_exporter.repo }}:{{ container_images.monitor.adguard_exporter.tag }}"
+    container_name: adguard_exporter
+    restart: unless-stopped
+    networks:
+      - shared-monitor-network
+    environment:
+      - 'ADGUARD_SERVERS=http://adguardhome:80'
+      - 'ADGUARD_USERNAMES={{ ADGUARD_EXPORTER_ADMIN_USER }}'
+      - 'ADGUARD_PASSWORDS={{ ADGUARD_EXPORTER_ADMIN_PASSWORD }}'
+
+  postgres_exporter:
+    image: "{{ container_images.monitor.postgres_exporter.repo }}:{{ container_images.monitor.postgres_exporter.tag }}"
+    container_name: postgres_exporter
+    restart: unless-stopped
+    networks:
+      - shared-monitor-network
+      - shared-database-network
+    environment:
+      - 'DATA_SOURCE_URI={{ postgres_container }}:5432/postgres?sslmode=disable'
+      - 'DATA_SOURCE_USER=${POSTGRES_EXPORTER_USER}'
+      - 'DATA_SOURCE_PASS=${POSTGRES_EXPORTER_PASSWORD}'

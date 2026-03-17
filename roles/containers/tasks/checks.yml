@@ -1,0 +1,15 @@
+- name: Assert primary_user is defined
+  assert:
+    that:
+      - primary_user | length > 0
+    fail_msg: "primary_user must be defined for containers role"
+
+- name: Ensure primary user exists on system
+  getent:
+    database: passwd
+    key: "{{ primary_user }}"
+
+- name: Ensure Docker is installed
+  command: docker --version
+  register: _docker_check
+  changed_when: false

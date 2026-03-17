@@ -1,0 +1,26 @@
+- name: Restore | [{{ svc.key }}] | Ensure restore directory exists
+  file:
+    path: "{{ restore_extract_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Restore | [{{ svc.key }}] | Download artifact
+  debug:
+    msg: "[restore-download] service={{ svc.key }} source={{ restore_artifact_remote_path }} dest={{ restore_encrypted_path }}"
+
+- name: Restore | [{{ svc.key }}] | Download from rclone
+  command:
+    argv:
+      - docker
+      - run
+      - --rm
+      - -v
+      - "{{ rclone_config_dir }}:{{ rclone_container_config_dir }}:ro"
+      - -v
+      - "{{ restore_extract_dir }}:{{ restore_extract_dir }}"
+      - "{{ rclone_container_image }}"
+      - copyto
+      - "{{ restore_artifact_remote_path }}"
+      - "{{ restore_encrypted_path }}"
+      - --config
+      - "{{ rclone_container_config_file }}"

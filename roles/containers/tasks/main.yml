@@ -1,0 +1,39 @@
+- name: Preflight checks
+  import_tasks: checks.yml
+
+- name: Reconcile stacks
+  vars:
+    task_file: "{{ role_path }}/../stacks/{{ stack }}/tasks/infra_config.yml"
+  include_tasks: "{{ task_file }}"
+  loop: "{{ containers_active }}"
+  loop_control:
+    loop_var: stack
+    label: "{{ stack }}"
+  when: task_file is file
+
+- name: Deploy containers
+  command: >
+    docker compose up -d
+    {{ '--force-recreate' if (force_recreate | default(false)) else '' }}
+  args:
+    chdir: "{{ containers.base_dir }}/{{ item }}"
+  become: true
+  loop: "{{ containers_active }}"
+  loop_control:
+    label: >-
+      {{
+        'Recreated ' ~ item
+        if (force_recreate | default(false))
+        else 'Deployed ' ~ item
+      }}
+  changed_when: false
+
+- name: Post-configure stacks
+  vars:
+    task_file: "{{ role_path }}/../stacks/{{ stack }}/tasks/post_config.yml"
+  include_tasks: "{{ task_file }}"
+  loop: "{{ containers_active }}"
+  loop_control:
+    loop_var: stack
+    label: "{{ stack }}"
+  when: task_file is file

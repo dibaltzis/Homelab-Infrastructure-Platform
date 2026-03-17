@@ -1,0 +1,25 @@
+[ req ]
+default_bits       = 4096
+distinguished_name = req_distinguished_name
+req_extensions     = v3_req
+prompt             = no
+
+[ req_distinguished_name ]
+O  = HomeLab
+CN = {{ cert_common_name }}
+
+[ v3_req ]
+basicConstraints = CA:FALSE
+keyUsage = digitalSignature, keyEncipherment
+subjectAltName = @alt_names
+
+[ alt_names ]
+{% for dns in cert_dns_names %}
+DNS.{{ loop.index }} = {{ dns }}
+{% endfor %}
+
+{% if cert_ip_names is defined %}
+{% for ip in cert_ip_names %}
+IP.{{ loop.index }} = {{ ip }}
+{% endfor %}
+{% endif %}

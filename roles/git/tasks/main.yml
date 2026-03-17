@@ -1,0 +1,103 @@
+---
+- name: Ensure git is installed
+  apt:
+    name: git
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Ensure .ssh directory exists for primary user
+  file:
+    path: "~{{ primary_user }}/.ssh"
+    state: directory
+    owner: "{{ primary_user }}"
+    group: "{{ primary_user }}"
+    mode: "0700"
+  
+
+- name: Validate git providers
+  assert:
+    that:
+      - item.name is defined
+      - item.host is defined
+      - item.port is defined
+      - item.private_key is defined
+      - item.public_key is defined
+    fail_msg: "Git provider definition is invalid: {{ item }}"
+  loop: "{{ git_providers | default([]) }}"
+  no_log: true
+  loop_control:
+    label: "{{ item.name | default('MISSING_NAME') }}"
+  
+
+# Install provider SSH keys if provided
+# ----------------------------------------------------------
+- name: Install provider SSH private key
+  copy:
+    content: "{{ item.private_key | trim }}\n"
+    dest: "~{{ primary_user }}/.ssh/id_ed25519_git_{{ item.name }}"
+    owner: "{{ primary_user }}"
+    group: "{{ primary_user }}"
+    mode: "0600"
+  no_log: true
+  loop: "{{ git_providers | default([]) }}"
+  loop_control:
+    label: "{{ item.name }}"
+  
+
+# Install provider SSH public key
+- name: Install provider SSH public key
+  copy:
+    content: "{{ item.public_key | trim }}\n"
+    dest: "~{{ primary_user }}/.ssh/id_ed25519_git_{{ item.name }}.pub"
+    owner: "{{ primary_user }}"
+    group: "{{ primary_user }}"
+    mode: "0644"
+  no_log: true
+  loop: "{{ git_providers | default([]) }}"
+  loop_control:
+    label: "{{ item.name }}"
+  
+
+# Configure SSH for Git access
+# ----------------------------------------------------------
+
+- name: Ensure known_hosts exists
+  file:
+    path: "~{{ primary_user }}/.ssh/known_hosts"
+    state: touch
+    owner: "{{ primary_user }}"
+    group: "{{ primary_user }}"
+    mode: "0644"
+  
+
+- name: Add git providers to known_hosts
+  known_hosts:
+    path: "~{{ primary_user }}/.ssh/known_hosts"
+    name: "[{{ item.host }}]:{{ item.port }}"
+    key: "{{ lookup('pipe', 'ssh-keyscan -t ed25519 -p ' ~ item.port ~ ' ' ~ item.host ~ ' 2>/dev/null') }}"
+    hash_host: true
+  loop: "{{ git_providers | default([]) }}"
+  loop_control:
+    label: "{{ item.name }}"
+  
+
+- name: Configure SSH for git providers
+  blockinfile:
+    path: "~{{ primary_user }}/.ssh/config"
+    create: true
+    owner: "{{ primary_user }}"
+    group: "{{ primary_user }}"
+    mode: "0600"
+    marker: "# {mark} ANSIBLE MANAGED GIT {{ item.name | upper }}"
+    block: |
+      Host {{ item.host }}
+          HostName {{ item.host }}
+          Port {{ item.port }}
+          User {{ item.user | default('git') }}
+          IdentityFile ~/.ssh/id_ed25519_git_{{ item.name }}
+          IdentitiesOnly yes
+  loop: "{{ git_providers | default([]) }}"
+  loop_control:
+    label: "{{ item.name }}"
+  

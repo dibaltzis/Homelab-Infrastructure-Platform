@@ -1,0 +1,26 @@
+############################################################
+# Docker registry trust (self-signed registry cert)
+############################################################
+
+- name: Set docker registry host for cert trust
+  set_fact:
+    docker_registry_host: "{{ ingress_services['docker-registry'].host_prefix }}.{{ ingress_domain }}"
+
+- name: Ensure Docker certs.d directory exists for registry
+  file:
+    path: "/etc/docker/certs.d/{{ docker_registry_host }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+
+- name: Install wildcard cert as Docker registry CA
+  copy:
+    src: "{{ {{ user_cert_ca.local_machine.dir }}/{{ wildcard_certificate.name }}.crt }}"
+    dest: "/etc/docker/certs.d/{{ docker_registry_host }}/ca.crt"
+    owner: root
+    group: root
+    mode: "0644"
+    remote_src: true
+  notify: restart docker

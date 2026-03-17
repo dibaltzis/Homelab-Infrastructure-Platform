@@ -1,0 +1,17 @@
+- name: Check OS prerequisites for certificate handling
+  import_tasks: packages.yml
+
+# Certificate generation
+- name: Node certificate (machine identity) — regen if IP changes
+  import_tasks: certs/node.yml
+
+- name: Wildcard certificate (ingress)
+  import_tasks: certs/wildcard.yml
+
+# Trust configuration
+- name: System trust store handling
+  import_tasks: trust/system.yml
+
+- name: Docker registry trust (self-signed registry cert)
+  import_tasks: trust/docker.yml
+  when: ingress_services.registry is defined

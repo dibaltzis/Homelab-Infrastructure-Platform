@@ -1,0 +1,32 @@
+GITEA_POSTGRES_DB:
+  NAME: "{{ secrets['stacks_envs/dev/gitea/postgres/name'] }}"
+  USER: "{{ secrets['stacks_envs/dev/gitea/postgres/user'] }}"
+  PASSWORD: "{{ secrets['stacks_envs/dev/gitea/postgres/password'] }}"
+  HOST: "{{ postgres_container }}"
+  PORT: "{{ postgres_container_port }}"
+
+GITEA_DATA_PATH: "{{ containers.data_dir }}/gitea/data"
+
+gitea_host: "{{ ingress_services['gitea'].host_prefix }}.{{ ingress_domain }}"
+GITEA__SERVER__ROOT_URL: "https://{{ gitea_host }}/"
+GITEA__SERVER__DOMAIN: "{{ gitea_host }}"
+GITEA__SERVER__SSH_DOMAIN: "{{ homelab_node.ip }}"
+GITEA_SSH_PORT: 222
+
+REGISTRY_HOST: "{{ ingress_services['docker-registry'].host_prefix }}.{{ ingress_domain }}"
+REGISTRY_REVERSE_PROXY_URL: "https://{{ REGISTRY_HOST }}"
+REGISTRY_SERVER_DATA: "{{ containers.data_dir }}/registry"
+
+JENKINS_PORT: 50000
+JENKINS_HOME_PATH: "{{ containers.data_dir }}/jenkins/jenkins_home"
+
+TIME_ZONE: "{{ timezone }}"
+PUID: "{{ primary_user_uid }}"
+PGID: "{{ primary_user_gid }}"
+
+
+JENKINS_HOST: "{{ ingress_services['jenkins'].host_prefix }}.{{ ingress_domain }}"
+JENKINS_URL: "https://{{ JENKINS_HOST }}/"
+
+#used on infra_config.yml rendering it to a file to define the extrenal url for jenkins
+JENKINS_EXTERNAL_URL: "https://{{ JENKINS_HOST }}"

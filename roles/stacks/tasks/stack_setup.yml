@@ -1,0 +1,61 @@
+- name: Ensure [{{ stack_name }}] stack root directory exists
+  file:
+    path: "{{ containers.base_dir }}/{{ stack_name }}"
+    state: directory
+    owner: "{{ stack_owner | default(primary_user) }}"
+    group: "{{ stack_group | default(primary_user) }}"
+    mode: "0755"
+
+- name: Ensure [{{ stack_name }}] stack data directories exist
+  file:
+    path: "{{ stack_dir.path }}"
+    state: directory
+    owner: "{{ stack_dir.owner | default(primary_user) }}"
+    group: "{{ stack_dir.group | default(primary_user) }}"
+    mode: "{{ stack_dir.mode | default('0755') }}"
+    recurse: "{{ stack_dir.recurse | default('no') }}"
+  loop: "{{ stack_data_dirs | default([]) }}"
+  loop_control:
+    loop_var: stack_dir
+    label: "{{ stack_dir.path }}"
+
+- name: Render [{{ stack_name }}] stack env file
+  template:
+    src: "{{ stack_env_template }}"
+    dest: "{{ containers.base_dir }}/{{ stack_name }}/.env"
+    mode: "0600"
+  when: stack_env_template is defined
+
+- name: Render [{{ stack_name }}] stack docker compose
+  template:
+    src: "{{ stack_compose_template }}"
+    dest: "{{ containers.base_dir }}/{{ stack_name }}/docker-compose.yml"
+    mode: "0644"
+  when: stack_compose_template is defined
+
+- name: Render [{{ stack_name }}] stack templates
+  template:
+    src: "{{ stack_template.src }}"
+    dest: "{{ stack_template.dest }}"
+    owner: "{{ stack_template.owner | default(primary_user) }}"
+    group: "{{ stack_template.group | default(primary_user) }}"
+    mode: "{{ stack_template.mode | default('0644') }}"
+  loop: "{{ stack_templates | default([]) }}"
+  loop_control:
+    loop_var: stack_template
+    label: "{{ stack_template.src }} -> {{ stack_template.dest }}"
+  notify: "{{ stack_template.notify | default(omit) }}"
+
+- name: Copy [{{ stack_name }}] stack files
+  copy:
+    src: "{{ stack_file_copy.src }}"
+    dest: "{{ stack_file_copy.dest }}"
+    owner: "{{ stack_file_copy.owner | default(primary_user) }}"
+    group: "{{ stack_file_copy.group | default(primary_user) }}"
+    mode: "{{ stack_file_copy.mode | default('0644') }}"
+    remote_src: "{{ stack_file_copy.remote_src | default(false) }}"
+  loop: "{{ stack_file_copies | default([]) }}"
+  loop_control:
+    loop_var: stack_file_copy
+    label: "{{ stack_file_copy.src }} -> {{ stack_file_copy.dest }}"
+  notify: "{{ stack_file_copy.notify | default(omit) }}"

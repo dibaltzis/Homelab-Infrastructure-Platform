@@ -1,0 +1,16 @@
+authelia_users:
+  admin:
+    username: "{{ secrets['stacks_envs/ingress/authelia/users/admin/username'] }}"
+    displayname: "Admin"
+    password: "{{ secrets['stacks_envs/ingress/authelia/users/admin/password_hash'] }}"
+    email: admin@local
+    groups:
+      - admins
+
+  jim: 
+    username:  "{{ secrets['stacks_envs/ingress/authelia/users/jim/username'] }}"
+    displayname: "Jim"
+    password: "{{ secrets['stacks_envs/ingress/authelia/users/jim/password_hash'] }}"
+    email: jim@local
+    groups:
+      - users

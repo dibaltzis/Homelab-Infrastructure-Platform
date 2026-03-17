@@ -1,0 +1,31 @@
+REVERSE_PROXY_HTTPS_PORT: 443
+
+REVERSE_PROXY_CERT_DIR: "{{ containers.data_dir }}/ingress/certs"
+REVERSE_PROXY_CONF_PATH: "{{ containers.data_dir }}/ingress/nginx/conf.d"
+REVERSE_PROXY_SNIPPETS_PATH: "{{ containers.data_dir }}/ingress/nginx/snippets"
+REVERSE_PROXY_dashboard_PATH: "{{ containers.data_dir }}/ingress/dashboard"
+
+#authelia
+AUTHELIA_CONFIG_DIR: "{{ containers.data_dir }}/ingress/authelia/config"
+
+AUTHELIA_POSTGRES_DB:
+  HOST: "{{ postgres_container }}"
+  PORT: "{{ postgres_container_port }}" 
+  NAME: "{{ secrets['stacks_envs/ingress/authelia/postgres/name'] }}"
+  USER: "{{ secrets['stacks_envs/ingress/authelia/postgres/user'] }}"
+  PASSWORD: "{{ secrets['stacks_envs/ingress/authelia/postgres/password'] }}"
+
+AUTHELIA_SESSION_SECRET: "{{ secrets['stacks_envs/ingress/authelia/session_secret'] }}"
+
+AUTHELIA_STORAGE_KEY: "{{ secrets['stacks_envs/ingress/authelia/storage_key'] }}"
+AUTHELIA_JWT_SECRET: "{{ secrets['stacks_envs/ingress/authelia/jwt_secret'] }}"
+
+# Dashboard certificate downloads
+dashboard_system_cert_name: "{{ user_cert_ca.local_machine.name }}.crt"
+dashboard_ingress_cert_name: "{{ wildcard_certificate.name }}.crt"
+
+dashboard_windy_widget_link: "{{ secrets['stacks_envs/dashboard/windy_link'] }}"
+
+# Registry hostname (used by dashboard + docker trust)
+registry_host: "{{ ingress_services['docker-registry'].host_prefix }}.{{ ingress_domain }}"
+

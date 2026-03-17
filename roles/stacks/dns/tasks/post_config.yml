@@ -1,0 +1,94 @@
+# Manually trigger AdGuard configuration after initial setup to ensure all settings are applied correctly.
+- name: Check if AdGuard container is running
+  command: docker inspect -f '{{ "{{.State.Running}}" }}' adguardhome
+  register: adguard_running
+  changed_when: false
+  failed_when: false
+
+- name: Stop AdGuard container if running
+  command: docker stop adguardhome
+  when: adguard_running.stdout == "true"
+
+- name: "[stacks/dns/post_config/adguardhome] Check if AdGuard config exists"
+  stat:
+    path: "{{ ADGUARD_CONFIG_PATH }}/AdGuardHome.yaml"
+  register: adguard_config_stat
+
+- name: "[stacks/dns/post_config/adguardhome] Bootstrap config if missing"
+  template:
+    src:  "{{ role_path }}/../stacks/dns/templates/adguard/adguard_bootstrap.yaml.j2"
+    dest: "{{ ADGUARD_CONFIG_PATH }}/AdGuardHome.yaml"
+    mode: "0600"
+  when: not adguard_config_stat.stat.exists
+
+- name: "[stacks/dns/post_config/adguardhome] Load current AdGuard config"
+  slurp:
+    src: "{{ ADGUARD_CONFIG_PATH }}/AdGuardHome.yaml"
+  register: agh_raw
+
+- name: "[stacks/dns/post_config/adguardhome] Parse AdGuard YAML"
+  set_fact:
+    agh_config: "{{ agh_raw.content | b64decode | from_yaml }}"
+
+- name: "[stacks/dns/post_config/adguardhome] Merge managed configuration"
+  set_fact:
+    agh_config: >-
+      {{
+        agh_config | combine({
+          'users': [
+            {
+              'name': adguard_admin_user,
+              'password': adguard_admin_password_hash
+            }
+          ],
+          'dns': {
+            'upstream_dns': adguard_upstreams,
+            'bootstrap_dns': adguard_bootstrap_dns,
+            'upstream_mode': adguard_upstream_mode,
+            'cache_enabled': adguard_cache_enabled,
+            'cache_size': adguard_cache_size,
+            'cache_optimistic': adguard_cache_optimistic,
+            'cache_optimistic_answer_ttl': adguard_cache_optimistic_answer_ttl,
+            'cache_ttl_min': 0,
+            'cache_ttl_max': 0
+          },
+          'filters': adguard_filters,
+          'user_rules': adguard_user_rules | default([]),
+          'filtering': {
+            'rewrites': adguard_rewrites
+          },
+          'statistics': adguard_statistics
+        }, recursive=True)
+      }}
+
+- name: "[stacks/dns/post_config/adguardhome] Write updated AdGuard config"
+  copy:
+    dest: "{{ ADGUARD_CONFIG_PATH }}/AdGuardHome.yaml"
+    content: "{{ agh_config | to_nice_yaml }}"
+    mode: "0600"
+  register: adguard_config_written
+
+- name: "[stacks/dns/post_config/adguardhome] Start AdGuard container"
+  command: docker start adguardhome
+  when: adguard_config_written.changed
+
+# Wait for AdGuard to apply new configuration and become healthy before proceeding with DNS validation.
+- name: "[stacks/dns/post_config/adguardhome] Wait for AdGuard container to be healthy"
+  vars:
+    container_name: adguardhome
+  shell: docker inspect --format='{{ "{{.State.Health.Status}}" }}' {{ container_name }}
+  register: container_health
+  retries: 30
+  delay: 5
+  until: container_health.stdout == "healthy"
+  changed_when: false
+
+- name: "[stacks/dns/post_config/adguardhome] Use AdGuard as system DNS"
+  copy:
+    dest: /etc/resolv.conf
+    content: |
+      nameserver 127.0.0.1
+
+- name: "[stacks/dns/post_config/adguardhome] Verify DNS resolution"
+  command: getent hosts google.com
+  changed_when: false

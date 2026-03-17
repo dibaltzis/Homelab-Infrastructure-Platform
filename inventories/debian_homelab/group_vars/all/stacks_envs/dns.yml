@@ -1,0 +1,2 @@
+ADGUARD_CONFIG_PATH: "{{ containers.data_dir }}/adguardhome/config"
+ADGUARD_DATA_PATH: "{{ containers.data_dir }}/adguardhome/data"

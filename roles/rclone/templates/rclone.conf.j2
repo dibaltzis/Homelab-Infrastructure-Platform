@@ -1,0 +1,15 @@
+# Managed by Ansible — DO NOT EDIT
+# Generated on {{ ansible_date_time.iso8601 }}
+
+{% for name, cfg in rclone_remotes.items() %}
+
+[{{ name }}]
+type = {{ cfg.type }}
+
+{% for key, value in cfg.items() %}
+{% if key not in ['type', 'comment', 'notes'] %}
+{{ key }} = {{ value }}
+{% endif %}
+{% endfor %}
+
+{% endfor %}

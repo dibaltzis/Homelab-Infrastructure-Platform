@@ -1,0 +1,168 @@
+#services that need to backup/restore
+# postgres-main
+# jenkins
+# gitea
+# home-assistant
+# hyperion
+
+#day of the month for the archive backup (if enabled)
+archive_day_of_month: 1
+
+rclone_backups:
+  services:
+    postgres:
+      enabled: true
+      source:
+        path: "{{ POSTGRESQL_DATA_PATH }}"
+        exclude:
+        - "pg_stat_tmp/"
+        - "postmaster.pid"
+        - "postmaster.opts"
+      destination:
+        remote: b2_account
+        bucket: Homelab-dibal
+        path: "{{ remote_default_folder_destination }}/postgres"
+        artifact_prefix: postgres
+      archive:
+        tool: tar #zip or tar
+      crypto:
+        enabled: true
+        tool: gpg
+        recipient: "{{ gpg_public_key }}"
+      hooks:
+        container: "{{ postgres_container }}"
+        pre_commands:
+            - 'docker exec {{ postgres_container }} psql -U {{ POSTGRES_USER }} -c "CHECKPOINT;"'
+        post_commands: []
+      retention:
+        enabled: true
+        keep_last: 10
+        min_keep: 2
+        archive:
+          enabled: true
+          day_of_month: "{{ archive_day_of_month }}"
+          destination:
+            remote: b2_account
+            bucket: Homelab-dibal
+            path: "{{ remote_default_archive_folder_destination }}/postgres"
+
+    gitea:
+      enabled: true
+      source:
+        path: "{{ GITEA_DATA_PATH }}"
+      destination:
+        remote: b2_account
+        bucket: Homelab-dibal
+        path: "{{ remote_default_folder_destination }}/gitea"
+        artifact_prefix: gitea
+      archive:
+        tool: tar #zip or tar
+      crypto:
+        enabled: true
+        tool: gpg
+        recipient: "{{ gpg_public_key }}"
+      hooks:
+        container: gitea
+      retention:
+        enabled: true
+        keep_last: 10
+        min_keep: 2
+        archive:
+          enabled: true
+          day_of_month: "{{ archive_day_of_month }}"
+          destination:
+            remote: b2_account
+            bucket: Homelab-dibal
+            path: "{{ remote_default_archive_folder_destination }}/gitea"
+
+    jenkins:
+      enabled: true
+      source:
+        path: "{{ JENKINS_HOME_PATH }}"
+        exclude: #works only with tar
+          - "war/"
+          - "updates/"
+          - "logs/"
+          - "caches/"
+      destination:
+        remote: b2_account
+        bucket: Homelab-dibal
+        path: "{{ remote_default_folder_destination }}/jenkins"
+        artifact_prefix: jenkins
+      archive:
+        tool: tar #zip or tar
+      crypto:
+        enabled: true
+        tool: gpg
+        recipient: "{{ gpg_public_key }}"
+      hooks:
+        container: jenkins
+      retention:
+        enabled: true
+        keep_last: 10
+        min_keep: 2
+        archive:
+          enabled: true
+          day_of_month: "{{ archive_day_of_month }}"
+          destination:
+            remote: b2_account
+            bucket: Homelab-dibal
+            path: "{{ remote_default_archive_folder_destination }}/jenkins"
+    
+    home-assistant:
+      enabled: true
+      source:
+        path: "{{ HOME_ASSISTANT_CONFIG_PATH }}"
+      destination:
+        remote: b2_account
+        bucket: Homelab-dibal
+        path: "{{ remote_default_folder_destination }}/home-assistant"
+        artifact_prefix: home-assistant
+      archive:
+        tool: tar #zip or tar
+      crypto:
+        enabled: true
+        tool: gpg
+        recipient: "{{ gpg_public_key }}"
+      hooks:
+        container: home-assistant
+      retention:
+        enabled: true
+        keep_last: 10
+        min_keep: 2
+        archive:
+          enabled: true
+          day_of_month: "{{ archive_day_of_month }}"
+          destination:
+            remote: b2_account
+            bucket: Homelab-dibal
+            path: "{{ remote_default_archive_folder_destination }}/home-assistant"
+
+    hyperion:
+      enabled: true
+      source:
+        path: "{{ HYPERION_CONFIG_PATH }}"
+      destination:
+        remote: b2_account
+        bucket: Homelab-dibal
+        path: "{{ remote_default_folder_destination }}/hyperion"
+        artifact_prefix: hyperion
+      archive:
+        tool: tar #zip or tar
+      crypto:
+        enabled: true
+        tool: gpg
+        recipient: "{{ gpg_public_key }}"
+      hooks:
+        container: hyperion
+      retention:
+        enabled: true
+        keep_last: 10
+        min_keep: 2
+        archive:
+          enabled: true
+          day_of_month: "{{ archive_day_of_month }}"
+          destination:
+            remote: b2_account
+            bucket: Homelab-dibal
+            path: "{{ remote_default_archive_folder_destination }}/hyperion"

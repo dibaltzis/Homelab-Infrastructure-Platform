@@ -1,0 +1,54 @@
+############################################################
+# System trust store handling
+############################################################
+
+- name: Set CA trust anchor path based on OS family
+  set_fact:
+    ca_trust_anchor_dir: >-
+      {{
+        '/etc/pki/ca-trust/source/anchors'
+        if ansible_os_family == 'RedHat'
+        else '/usr/local/share/ca-certificates'
+        if ansible_os_family == 'Debian'
+        else '/etc/ssl/certs'
+      }}
+
+- name: Ensure CA trust anchor directory exists
+  file:
+    path: "{{ ca_trust_anchor_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install node cert into system trust store
+  copy:
+    src: "{{ user_cert_ca.local_machine.dir }}/{{ user_cert_ca.local_machine.name }}.crt"
+    dest: "{{ ca_trust_anchor_dir }}/{{ user_cert_ca.local_machine.name }}.crt"
+    owner: root
+    group: root
+    mode: "0644"
+    remote_src: true
+  notify: update ca trust
+
+- name: Install wildcard cert into system trust store
+  copy:
+    src: "{{ user_cert_ca.local_machine.dir }}/{{ wildcard_certificate.name }}.crt"
+    dest: "{{ ca_trust_anchor_dir }}/{{ wildcard_certificate.name }}.crt"
+    owner: root
+    group: root
+    mode: "0644"
+    remote_src: true
+  notify: update ca trust
+
+- name: Install trusted certificates from role files directory
+  copy:
+    src: "{{ item }}"
+    dest: "{{ ca_trust_anchor_dir }}/{{ item | basename }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ lookup('fileglob', role_path + '/files/*.crt', wantlist=True) }}"
+  loop_control:
+    label: "{{ item | basename }}"
+  notify: update ca trust

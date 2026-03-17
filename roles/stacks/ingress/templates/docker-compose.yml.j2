@@ -1,0 +1,48 @@
+networks:
+  shared-ingress-network:
+    external: true
+
+  shared-database-network:
+    external: true
+
+services:
+  reverse-proxy:
+    image: "{{ container_images.ingress.reverse_proxy.repo }}:{{ container_images.ingress.reverse_proxy.tag }}"
+    container_name: reverse-proxy
+    restart: unless-stopped
+    networks:
+      - shared-ingress-network
+    ports:
+      - "${REVERSE_PROXY_HTTPS_PORT}:443"
+      - "80:80"
+    volumes:
+      - ${REVERSE_PROXY_CERT_DIR}:/etc/nginx/certs:ro
+      - ${REVERSE_PROXY_CONF_PATH}:/etc/nginx/conf.d:ro
+      - ${REVERSE_PROXY_SNIPPETS_PATH}:/etc/nginx/snippets:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  authelia:
+    image: "{{ container_images.ingress.authelia.repo }}:{{ container_images.ingress.authelia.tag }}"
+    container_name: authelia
+    restart: unless-stopped
+    networks:
+      - shared-ingress-network
+      - shared-database-network
+    volumes:
+      - {{ AUTHELIA_CONFIG_DIR }}:/config
+    environment:
+      - TZ={{ timezone }}
+    command: authelia --config /config/configuration.yml
+
+  dashboard:
+    image: "{{ container_images.ingress.dashboard.repo }}:{{ container_images.ingress.dashboard.tag }}"
+    container_name: dashboard
+    restart: unless-stopped
+    networks:
+      - shared-ingress-network
+    volumes:
+      - ${REVERSE_PROXY_dashboard_PATH}:/usr/share/nginx/html:ro

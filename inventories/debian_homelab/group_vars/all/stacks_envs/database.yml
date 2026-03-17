@@ -1,0 +1,3 @@
+TIME_ZONE: "{{ timezone }}"
+POSTGRESQL_DATA_PATH: "{{ containers.data_dir }}/db/postgres/data"
+

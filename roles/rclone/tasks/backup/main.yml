@@ -1,0 +1,81 @@
+- name: Build enabled backup services list
+  set_fact:
+    backup_services_enabled: >-
+      {{
+        (rclone_backups.services | default({}))
+        | dict2items
+        | selectattr('value.enabled', 'equalto', true)
+        | list
+      }}
+
+- name: Run backup pipeline per service
+  include_tasks: backup/pipeline/service_pipeline.yml
+  loop: "{{ backup_services_enabled | default([]) }}"
+  loop_control:
+    loop_var: service_item
+    label: "{{ service_item.key }}"
+  vars:
+    svc: "{{ service_item }}"
+
+# ------------------------------------------------------------
+# Build backup summary
+# ------------------------------------------------------------
+
+- name: Inspect backup artifacts directory
+  find:
+    paths: "{{ rclone_tmp_archives }}"
+    file_type: file
+  register: backup_artifacts
+  when: backup_services_enabled | length > 0
+
+- name: Build backup summary
+  set_fact:
+    rclone_backup_results: >-
+      {{
+        (rclone_backup_results | default([]))
+        +
+        [
+          {
+            "name": item.key,
+            "source": item.value.source.path,
+            "remote": (
+              item.value.destination.remote ~ ':' ~
+              (
+                item.value.destination.bucket ~ '/'
+                if (item.value.destination.bucket is defined)
+                else ''
+              ) ~
+              (item.value.destination.path | trim('/')) ~ '/' ~
+              (matched_file.path | basename)
+            ),
+            "date": '%Y-%m-%dT%H:%M:%SZ' | strftime(matched_file.mtime | int),
+            "duration": ((rclone_operation_timers | default({}))[item.key] | default(-1)) ~ "s",
+            "status": "success"
+          }
+        ]
+      }}
+  vars:
+    matched_file: >-
+      {{
+        backup_artifacts.files
+        | selectattr('path', 'search', item.key)
+        | list
+        | first
+      }}
+  loop: "{{ backup_services_enabled }}"
+  loop_control:
+    label: "{{ item.key }}"
+  when: matched_file is not none
+
+- name: Backup summary
+  debug:
+    var: rclone_backup_results
+
+# ------------------------------------------------------------
+
+- name: Cleanup local archive workspace
+  file:
+    path: "{{ rclone_tmp_archives }}"
+    state: absent
+  ignore_errors: true
+

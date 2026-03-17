@@ -1,0 +1,183 @@
+ingress_domain: "{{ homelab_node.ip }}.nip.io"
+auth_gateway_enabled: true
+auth_gateway: authelia
+auth_gateway_host: "{{ ingress_services['authelia'].host_prefix }}.{{ ingress_domain }}"
+
+ingress_services:
+  authelia:
+    host_prefix: auth
+    upstream: authelia
+    port: 9091
+    requires_auth: false
+    dashboard:
+      show: false
+
+  dashboard:
+    host_prefix: dashboard
+    upstream: dashboard
+    port: 80
+    requires_auth: true
+    dashboard:
+      show: false
+
+  dashboard_metrics_agent_server:
+    host_prefix: dma-server
+    upstream: dashboard_metrics_agent
+    port: 8000
+    requires_auth: false
+    access_logging: false
+    dashboard:
+      show: false
+
+  adguardhome:
+    host_prefix: adguardhome
+    upstream: adguardhome
+    port: 80
+    requires_auth: true
+    dashboard:
+      show: true
+      category: infra
+      icon: https://cdn.simpleicons.org/adguard
+
+  docker-registry:
+    host_prefix: registry
+    upstream: registry-server
+    port: 5000
+    upload: true
+    requires_auth: false
+    dashboard:
+      show: false
+      category: infra
+
+  registry-ui:
+    host_prefix: registry-ui
+    upstream: registry-ui
+    port: 80
+    requires_auth: true
+    dashboard:
+      show: true
+      category: dev
+      icon: https://cdn.simpleicons.org/docker
+  
+  gitea:
+    host_prefix: gitea
+    upstream: gitea
+    port: 3000
+    requires_auth: true
+    dashboard:
+      show: true
+      category: dev
+      icon: https://cdn.simpleicons.org/gitea
+  
+  jenkins:
+    host_prefix: jenkins
+    upstream: jenkins
+    port: 8080
+    requires_auth: true
+    dashboard:
+      show: true
+      category: dev
+      icon: https://cdn.simpleicons.org/jenkins
+
+  it-tools:
+    host_prefix: it-tools
+    upstream: it-tools
+    port: 80
+    requires_auth: false
+    dashboard:
+      show: true
+      category: dev
+      icon: https://raw.githubusercontent.com/CorentinTh/it-tools/refs/heads/main/public/favicon.ico
+ 
+  adminer:
+    host_prefix: adminer
+    upstream: adminer
+    port: 8080
+    websocket: false
+    requires_auth: true
+    dashboard:
+      show: true
+      category: database
+      icon: https://cdn.simpleicons.org/adminer
+
+  prometheus:
+    host_prefix: prometheus
+    upstream: prometheus
+    port: 9090 
+    requires_auth: true
+    dashboard:
+      show: true
+      category: monitoring
+      icon: https://cdn.simpleicons.org/prometheus
+  
+  alertmanager:
+    host_prefix: alertmanager
+    upstream: alertmanager
+    port: 9093 
+    requires_auth: true
+    dashboard:
+      show: true
+      category: monitoring
+      icon: https://cdn.simpleicons.org/prometheus
+  
+  grafana:
+    host_prefix: grafana
+    upstream: grafana
+    port: 3000 
+    websocket: true
+    requires_auth: true
+    dashboard:
+      show: true
+      category: monitoring
+      icon: https://cdn.simpleicons.org/grafana
+
+  openspeedtest:
+    host_prefix: speedtest
+    upstream: openspeedtest
+    port: 3000
+    requires_auth: true
+    dashboard:
+      show: true
+      category: network
+      icon: https://cdn.simpleicons.org/speedtest
+  
+  home-assistant:
+    host_prefix: ha
+    upstream: home-assistant
+    port: 8123
+    websocket: true
+    requires_auth: true
+    dashboard:
+      show: true
+      category: home
+      icon: https://cdn.simpleicons.org/homeassistant
+  
+  hyperion:
+    host_prefix: hyperion
+    upstream: hyperion
+    port: 8090
+    websocket: true
+    requires_auth: true
+    dashboard:
+      show: true
+      category: home
+      icon: https://github.com/hyperion-project/hyperion.ng/blob/master/assets/webconfig/favicon.png?raw=true
+   
+  dashboard-metrics-agent-workstation:
+    host_prefix: dma-ws
+    upstream: 192.168.31.127
+    port: 8000
+    requires_auth: false
+    access_logging: false
+    dashboard:
+      show: false
+
+  gatus:
+    host_prefix: gatus
+    upstream: gatus
+    port: 8080
+    requires_auth: false
+    dashboard:
+      show: true
+      category: monitoring
+      icon: https://raw.githubusercontent.com/TwiN/gatus/refs/heads/master/web/static/favicon.ico

@@ -1,0 +1,14 @@
+- name: Backup | [{{ svc.key }}] | Upload intent
+  debug:
+    msg: "[rclone-upload] service={{ svc.key }} artifact={{ backup_artifact }}"
+    
+- name: Backup | [{{ svc.key }}] | Uploading archive to B2
+  command: >
+    docker run --rm
+    -v {{ rclone_config_dir }}:{{ rclone_container_config_dir }}:ro
+    -v {{ rclone_tmp_archives }}:{{ rclone_tmp_archives }}
+    {{ rclone_container_image }}
+    copyto
+    {{ rclone_tmp_archives }}/{{ backup_artifact }}
+    {{ backup_artifact_remote_path }}
+    -vv

@@ -1,0 +1,36 @@
+groups:
+- name: nginx-ingress
+  rules:
+
+  - alert: NginxUpstreamTimeouts
+    expr: |
+      sum(count_over_time({container="nginx"} |= "upstream timed out" [2m])) > 3
+    for: 1m
+    labels:
+      severity: warning
+      category: services
+    annotations:
+      summary: "Nginx upstream timeouts"
+      description: "Multiple upstream timeouts detected in ingress logs."
+
+  - alert: NginxServerErrors
+    expr: |
+      sum(count_over_time({container="nginx"} |~ "HTTP/1.1\" 5[0-9]{2}" [2m])) > 10
+    for: 1m
+    labels:
+      severity: warning
+      category: services
+    annotations:
+      summary: "High rate of HTTP 5xx responses"
+      description: "Ingress is returning many server errors."
+
+  - alert: NginxErrorLogEntries
+    expr: |
+      sum(count_over_time({container="nginx"} |= "[error]" [2m])) > 5
+    for: 1m
+    labels:
+      severity: critical
+      category: services
+    annotations:
+      summary: "Nginx error log entries detected"
+      description: "Multiple error-level messages detected in nginx logs."

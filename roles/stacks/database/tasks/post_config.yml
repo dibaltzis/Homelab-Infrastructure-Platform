@@ -1,0 +1,19 @@
+- name: "[stacks/database/post_config/postgres] Wait for postgres container"
+  shell: docker inspect --format='{{ "{{.State.Health.Status}}" }}' {{ postgres_container }}
+  register: postgres_health
+  retries: 30
+  delay: 2
+  until: postgres_health.stdout == "healthy"
+  changed_when: false
+
+- name: "[stacks/database/post_config/postgres] Ensure postgres users and databases exist"
+  shell: |
+    docker exec -i {{ postgres_container }} psql -U {{ POSTGRES_USER }} -v ON_ERROR_STOP=1 <<'SQL'
+    {{ lookup('template', playbook_dir + '/../roles/stacks/database/templates/postgres_init.sql.j2') }}
+    SQL
+  args:
+    executable: /bin/bash
+  when:
+    - postgres_databases is defined
+    - postgres_databases | length > 0
+  notify: restart postgres dependent services

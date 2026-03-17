@@ -1,0 +1,28 @@
+- name: Restore | [{{ svc.key }}] | Remove decrypted archive
+  file:
+    path: "{{ restore_decrypted_path }}"
+    state: absent
+  when:
+    - svc.value.archive.enabled | default(false)
+    - svc.value.archive.cleanup_archive | default(false)
+
+- name: Restore | [{{ svc.key }}] | Remove encrypted artifact
+  file:
+    path: "{{ restore_encrypted_path }}"
+    state: absent
+  when:
+    - svc.value.archive.enabled | default(false)
+    - svc.value.archive.cleanup_encrypted | default(false)
+
+- name: Restore | [{{ svc.key }}] | Create restore_done marker
+  file:
+    path: "{{ restore_done_marker }}"
+    state: touch
+
+- name: Restore | [{{ svc.key }}] | Update marker state
+  set_fact:
+    restore_markers: "{{ restore_markers | combine({'done': true}) }}"
+
+- name: Restore | [{{ svc.key }}] | Cleanup result
+  debug:
+    msg: "[restore-cleanup] service={{ svc.key }} completed"

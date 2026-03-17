@@ -1,0 +1,33 @@
+networks:
+  shared-ingress-network:
+    external: true
+
+  shared-monitor-network:
+    external: true
+
+services:
+  adguardhome:
+    container_name: adguardhome
+    image: "{{ container_images.dns.adguardhome.repo }}:{{ container_images.dns.adguardhome.tag }}"
+    restart: unless-stopped
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+    volumes:
+      - ${ADGUARD_CONFIG_PATH}:/opt/adguardhome/conf
+      - ${ADGUARD_DATA_PATH}:/opt/adguardhome/work
+    dns:
+      - 9.9.9.9
+      - 1.1.1.1
+    networks:
+      - shared-ingress-network
+      - shared-monitor-network
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+
+    healthcheck:
+        test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:80"]
+        interval: 10s
+        timeout: 3s
+        retries: 5
+        start_period: 20s
