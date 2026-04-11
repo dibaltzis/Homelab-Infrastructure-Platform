@@ -15,19 +15,15 @@ containers:
 
 containers_active: >-
   {{
-    (
+    containers.enabled
+    if stacks is not defined
+    else (
       stacks
       if stacks is sequence and stacks is not string
-      else
-      (
+      else (
         stacks | from_yaml
-        if (stacks is string and stacks.startswith('['))
-        else
-        (
-          [stacks]
-          if stacks is defined
-          else containers.enabled
-        )
+        if stacks is string and stacks.startswith('[')
+        else [stacks]
       )
     )
   }}
