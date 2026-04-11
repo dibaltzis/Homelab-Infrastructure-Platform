@@ -24,7 +24,7 @@ discord_webhooks:
 #gatus templates variables
 gatus_custom_endpoints:
   - name: healthchecks
-    url: "{{ secrets['/stacks_envs/monitor/gatus/healthchecks.io/url'] }}"
+    url: "{{ secrets['stacks_envs/monitor/gatus/healthchecks.io/url'] }}"
     group: external
     interval: 60s
     conditions:
