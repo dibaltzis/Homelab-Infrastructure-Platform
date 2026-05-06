@@ -1,3 +1,9 @@
+- name: Normalize rclone runtime flags
+  set_fact:
+    rclone_enable_backup: "{{ rclone_enable_backup | bool }}"
+    rclone_enable_restore: "{{ rclone_enable_restore | bool }}"
+    force_restore_enabled: "{{ force_restore_enabled | bool }}"
+    
 - name: Rclone workflows
   when:
     - rclone_enable_backup or rclone_enable_restore

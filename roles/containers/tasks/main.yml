@@ -1,6 +1,10 @@
 - name: Preflight checks
   import_tasks: checks.yml
 
+- name: Normalize container runtime variables
+  set_fact:
+    force_recreate: "{{ force_recreate | default(false) | bool }}"
+
 - name: Reconcile stacks
   vars:
     task_file: "{{ role_path }}/../stacks/{{ stack }}/tasks/infra_config.yml"
