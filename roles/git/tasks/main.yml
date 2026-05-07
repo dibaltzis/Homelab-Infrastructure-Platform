@@ -76,8 +76,9 @@
     path: "~{{ primary_user }}/.ssh/known_hosts"
     name: "[{{ item.host }}]:{{ item.port }}"
     key: "{{ lookup('pipe', 'ssh-keyscan -t ed25519 -p ' ~ item.port ~ ' ' ~ item.host ~ ' 2>/dev/null') }}"
-    hash_host: true
+    hash_host: false
   loop: "{{ git_providers | default([]) }}"
+  no_log: true
   loop_control:
     label: "{{ item.name }}"
   
